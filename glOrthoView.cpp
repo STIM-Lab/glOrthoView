@@ -1,0 +1,198 @@
+/// This is an OpenGL "Hello World!" file that provides simple examples of integrating ImGui with GLFW
+/// for basic OpenGL applications. The file also includes headers for the TIRA::GraphicsGL classes, which
+/// provide an basic OpenGL front-end for creating materials and models for rendering.
+
+
+#include "tira/graphics_gl.h"
+
+
+
+#include <iostream>
+#include <string>
+#include <stdio.h>
+
+#include "gui.h"
+#include "tira/graphics/glVolume.h"
+
+GLFWwindow* window;                                     // pointer to the GLFW window that will be created (used in GLFW calls to request properties)
+const char* glsl_version = "#version 130";              // specify the version of GLSL
+ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.00f);   // specify the OpenGL color used to clear the back buffer
+float gui_VolumeSize[] = {1.0f, 1.0f, 1.0f};            // initialize the volume size to 1 (uniform)
+float gui_VolumeSlice[] = { 0.5f, 0.5f, 0.5f };         // current volume slice being displayed [0.0, 1.0]
+
+
+int main(int argc, char** argv)
+{
+    // HELIA: test code out right here
+
+    window = InitGLFW();                                // create a GLFW window
+
+    InitUI(window, glsl_version);                       // initialize ImGui
+
+    GLenum err = glewInit();
+    if (GLEW_OK != err) {
+        /* Problem: glewInit failed, something is seriously wrong. */
+        fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
+    }
+
+
+    tira::glVolume<unsigned char> vol;
+    //vol.load("vessels/*.bmp");                                            // uncomment to load from the demo image stack
+    vol.generate_rgb(256, 256, 256, 8);                                        // generate an RGB grid texture
+
+
+
+    tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();
+    
+
+    tira::glMaterial material("slicer.shader");
+    material.SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);
+
+    
+    // Projection Matrix
+    glm::mat4 Mproj;
+    glm::mat4 Mproj_xy;
+    glm::mat4 Mproj_zx;
+    glm::mat4 Mproj_zy;
+
+    // Model Matrix
+    glm::mat4 rotate = glm::mat4(1.0f);
+    glm::mat4 rotate_zx = glm::rotate(rotate, glm::radians(90.0f), glm::vec3(1.0, 0.0, 0.0));
+    glm::mat4 rotate_zy = glm::rotate(rotate, glm::radians(90.0f), glm::vec3(0.0, 1.0, 0.0));
+
+    // View Matrix
+    glm::mat4 Mview_xy = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, -1.0f),                // eye
+        glm::vec3(0.0f, 0.0f,  0.0f),                // center
+        glm::vec3(0.0f, 1.0f,  0.0f));               // up
+
+    glm::mat4 Mview_zx = glm::lookAt(          
+        glm::vec3(0.0f,  1.0f, 0.0f),                // eye
+        glm::vec3(0.0f,  0.0f, 0.0f),                // center
+        glm::vec3(0.0f,  0.0f, 1.0f));               // up
+    
+    glm::mat4 Mview_zy = glm::lookAt(
+        glm::vec3(-1.0f, 0.0f, 0.0f),                // eye
+        glm::vec3( 0.0f, 0.0f, 0.0f),                // center
+        glm::vec3( 0.0f, 0.0f, 1.0f));               // up
+
+    
+    glm::mat4 scale = glm::mat4(1.0f);
+    glm::mat4 scale_xy = scale;
+    glm::mat4 scale_zx = scale;
+    glm::mat4 scale_zy = scale;
+
+
+    // Main event loop
+    while (!glfwWindowShouldClose(window))
+    {
+        // Poll and handle events (inputs, window resize, etc.)
+        glfwPollEvents();
+        
+        RenderUI();                                                 // render the user interface (the entire thing is rendered every frame)
+        int display_w, display_h;                                   // size of the frame buffer (openGL display)
+        glfwGetFramebufferSize(window, &display_w, &display_h);     // get the frame buffer size
+        
+        //glViewport(0, 0, display_w, display_h);                     // specifies the area of the window where OpenGL can render
+        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+
+        float aspect = (float)display_w / (float)display_h;
+                
+
+        // calculate the aspect ratios for each plane
+        float xy_aspect = gui_VolumeSize[0] / gui_VolumeSize[1];
+        float xz_aspect = gui_VolumeSize[0] / gui_VolumeSize[2];
+        float yz_aspect = gui_VolumeSize[1] / gui_VolumeSize[2];
+
+        float Sxy, Sxz, Syz;                                                                    // S will be the size of the viewport along its smallest dimension
+        if (xy_aspect < aspect) {
+            Sxy = gui_VolumeSize[1];
+        }
+        else {
+            Sxy = gui_VolumeSize[0];
+        }
+
+        if (xz_aspect < aspect) {
+            Sxz = gui_VolumeSize[2];
+        }
+        else {
+            Sxz = gui_VolumeSize[0];
+        }
+
+        if (yz_aspect < aspect) {
+            Syz = gui_VolumeSize[2];
+        }
+        else {
+            Syz = gui_VolumeSize[1];
+        }
+
+        float S = std::max(Sxy, std::max(Sxz, Syz));                                // S is now the size of whichever dimension of the volume is touching the boundary of the viewport
+
+        scale_xy = glm::scale(glm::mat4(1.0f), glm::vec3(gui_VolumeSize[0], gui_VolumeSize[1], 1.0f));      // (X, Y, Z)
+        scale_zx = glm::scale(glm::mat4(1.0f), glm::vec3(gui_VolumeSize[0], 1.0f, gui_VolumeSize[2]));      // (Y, X, Z)
+        scale_zy = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, gui_VolumeSize[1], gui_VolumeSize[2]));      // (Y, X, Z)
+
+        glm::mat4 Mproj;
+        if (aspect > 1) {
+            Mproj = glm::ortho(-0.5 * aspect * S, 0.5 * aspect * S, -0.5 * S, 0.5 * S, 0.0, 10000.0);
+        }
+        else {
+            Mproj = glm::ortho(-0.5 * S, 0.5 * S, -0.5 * (1.0 / aspect) * S, 0.5 * (1.0 / aspect) * S, 0.0, 10000.0);
+        }
+
+        glClear(GL_COLOR_BUFFER_BIT);                               // clear the Viewport using the clear color
+        
+        /****************************************************/
+        /*      Draw Stuff To The Viewport                  */
+        /****************************************************/
+
+
+        glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
+        material.Begin();
+        material.SetUniformMat4f("MVP", Mproj * Mview_xy * scale_xy);
+        material.SetUniform1i("axis", 2);
+        material.SetUniform1f("slider", gui_VolumeSlice[2]);
+        rect.Draw();
+        rect.Unbind();
+        material.End();
+
+        glViewport(display_w / 2, 0, display_w / 2, display_h / 2);
+        material.Begin();
+        material.SetUniformMat4f("MVP", Mproj * Mview_zx * scale_zx * rotate_zx);
+        material.SetUniform1i("axis", 1);
+        material.SetUniform1f("slider", gui_VolumeSlice[1]);
+        rect.Draw();
+        rect.Unbind();
+        material.End();
+
+        glViewport(0, 0, display_w / 2, display_h / 2);
+        material.Begin();
+        material.SetUniformMat4f("MVP", Mproj * Mview_zy * scale_zy * rotate_zy);
+        material.SetUniform1i("axis", 0);
+        material.SetUniform1f("slider", gui_VolumeSlice[0]);
+        rect.Draw();
+        rect.Unbind();
+        material.End();
+
+        glViewport(0, 0, display_w, display_h);
+        glBegin(GL_LINES);
+        glVertex2f(-1.0, 0.0);
+        glVertex2f(1.0, 0.0);
+        glEnd();
+        glBegin(GL_LINES);
+        glVertex2f(0.0, -1.0);
+        glVertex2f(0.0, 1.0);
+        glEnd();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());     // draw the GUI data from its buffer
+
+        glfwSwapBuffers(window);                                    // swap the double buffer
+    }
+
+
+    DestroyUI();                                                    // Clear the ImGui user interface
+
+    glfwDestroyWindow(window);                                      // Destroy the GLFW rendering window
+    glfwTerminate();                                                // Terminate GLFW
+
+    return 0;
+}
