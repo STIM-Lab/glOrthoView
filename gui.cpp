@@ -4,11 +4,8 @@
 
 float ui_scale = 1.5f;                                  // scale value for the UI and UI text
 //float a_slider_value;                                   // UI variable used to store the value of a floating point slider widget
-//float slider_2;
-//float slider_3;
-//float x_size = 5.0f;
-//float y_size = 5.0f;
-//float z_size = 5.0f;
+
+bool reset = false;
 extern float gui_VolumeSize[];
 extern float gui_VolumeSlice[];
 
@@ -110,7 +107,7 @@ void RenderUI() {
         // Adjusting the size of the volume along each axis
         ImGui::SliderFloat3("Volume Size", gui_VolumeSize, 0.25f, 2.0f);
         ImGui::SliderFloat3("Volume Slice", gui_VolumeSlice, 0.0f, 1.0f);
-        
+        reset = ImGui::Button("Reset", ImVec2(70, 50));
 
 
         ImGui::GetFont()->Scale = old_size;

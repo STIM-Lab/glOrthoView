@@ -5,12 +5,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-extern float a_slider_value;
-extern float slider_2;
-extern float slider_3;
-extern float x_size;
-extern float y_size;
-extern float z_size;
+extern bool reset;
 
 void glfw_error_callback(int error, const char* description);
 
