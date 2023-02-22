@@ -12,7 +12,7 @@
 #include <stdio.h>
 
 #include "gui.h"
-#include "tira/graphics/glVolume.h"
+
 
 GLFWwindow* window;                                     // pointer to the GLFW window that will be created (used in GLFW calls to request properties)
 const char* glsl_version = "#version 130";              // specify the version of GLSL
@@ -20,13 +20,40 @@ ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.00f);   // specify the OpenGL co
 float gui_VolumeSize[] = {1.0f, 1.0f, 1.0f};            // initialize the volume size to 1 (uniform)
 float gui_VolumeSlice[] = { 0.5f, 0.5f, 0.5f };         // current volume slice being displayed [0.0, 1.0]
 
+tira::camera cam;                                       // create a perspective camera for 3D visualization of the volume
+bool right_mouse_pressed = false;                       // flag indicates when the right mouse button is being dragged
+double mouse_x, mouse_y;
+double THETA = 0.02;
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+        right_mouse_pressed = true;
+        glfwGetCursorPos(window, &mouse_x, &mouse_y);                   // save the mouse position when the right button is pressed
+    }
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
+        right_mouse_pressed = false;
+}
+
+static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    if (right_mouse_pressed) {
+        double dx = xpos - mouse_x;
+        double dy = ypos - mouse_y;
+
+        mouse_x = xpos;
+        mouse_y = ypos;
+
+        cam.OrbitFocus(-THETA * dx, THETA * dy);
+    }
+}
 
 int main(int argc, char** argv)
 {
-    // HELIA: test code out right here
-
+    // Initialize OpenGL
     window = InitGLFW();                                // create a GLFW window
-
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
     InitUI(window, glsl_version);                       // initialize ImGui
 
     GLenum err = glewInit();
@@ -35,20 +62,22 @@ int main(int argc, char** argv)
         fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
     }
 
-
+    // Load or create an example volume
     tira::glVolume<unsigned char> vol;
     //vol.load("vessels/*.bmp");                                            // uncomment to load from the demo image stack
-    vol.generate_rgb(256, 256, 256, 8);                                        // generate an RGB grid texture
+    vol.generate_rgb(256, 256, 256, 8);                                     // generate an RGB grid texture
 
 
+    // generate the basic geometry and materials for rendering
+    tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();   // create a rectangle for rendering volume cross-sections
+    tira::glMaterial material("slicer.shader");                             // slicer shader renders a cross-section of the geometry
+    material.SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);          // bind the volume to the material
 
-    tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();
-    
+    float vs_max = std::max(gui_VolumeSize[0], std::max(gui_VolumeSize[1], gui_VolumeSize[2]));    // find the maximum size of the volume
+    cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);
+    //cam.setPosition(0, 0, -2 * vs_max);
+    cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 
-    tira::glMaterial material("slicer.shader");
-    material.SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);
-
-    
     // Projection Matrix
     glm::mat4 Mproj;
     glm::mat4 Mproj_xy;
@@ -140,38 +169,63 @@ int main(int argc, char** argv)
             Mproj = glm::ortho(-0.5 * S, 0.5 * S, -0.5 * (1.0 / aspect) * S, 0.5 * (1.0 / aspect) * S, 0.0, 10000.0);
         }
 
-        glClear(GL_COLOR_BUFFER_BIT);                               // clear the Viewport using the clear color
+        glEnable(GL_DEPTH_TEST);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
         
         /****************************************************/
         /*      Draw Stuff To The Viewport                  */
         /****************************************************/
 
-
-        glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
+        // Bind the volume material and render all of the viewports
         material.Begin();
-        material.SetUniformMat4f("MVP", Mproj * Mview_xy * scale_xy);
-        material.SetUniform1i("axis", 2);
-        material.SetUniform1f("slider", gui_VolumeSlice[2]);
-        rect.Draw();
-        rect.Unbind();
-        material.End();
+        {
+            // Upper Right (X-Y) Viewport
+            glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
+            material.SetUniformMat4f("MVP", Mproj * Mview_xy * scale_xy);
+            material.SetUniform1i("axis", 2);
+            material.SetUniform1f("slider", gui_VolumeSlice[2]);
+            rect.Draw();
 
-        glViewport(display_w / 2, 0, display_w / 2, display_h / 2);
-        material.Begin();
-        material.SetUniformMat4f("MVP", Mproj * Mview_zx * scale_zx * rotate_zx);
-        material.SetUniform1i("axis", 1);
-        material.SetUniform1f("slider", gui_VolumeSlice[1]);
-        rect.Draw();
-        rect.Unbind();
-        material.End();
+            // Lower Right (X-Z) Viewport
+            glViewport(display_w / 2, 0, display_w / 2, display_h / 2);
+            //material.Begin();
+            material.SetUniformMat4f("MVP", Mproj * Mview_zx * scale_zx * rotate_zx);
+            material.SetUniform1i("axis", 1);
+            material.SetUniform1f("slider", gui_VolumeSlice[1]);
+            rect.Draw();
 
-        glViewport(0, 0, display_w / 2, display_h / 2);
-        material.Begin();
-        material.SetUniformMat4f("MVP", Mproj * Mview_zy * scale_zy * rotate_zy);
-        material.SetUniform1i("axis", 0);
-        material.SetUniform1f("slider", gui_VolumeSlice[0]);
-        rect.Draw();
-        rect.Unbind();
+            // Lower Left (Y-Z) Viewport
+            glViewport(0, 0, display_w / 2, display_h / 2);
+            //material.Begin();
+            material.SetUniformMat4f("MVP", Mproj * Mview_zy * scale_zy * rotate_zy);
+            material.SetUniform1i("axis", 0);
+            material.SetUniform1f("slider", gui_VolumeSlice[0]);
+            rect.Draw();
+
+            // Render the upper left (3D) view
+            glViewport(0, display_h / 2, display_w / 2, display_h / 2);
+            glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
+            
+            // draw the XY plane
+            material.SetUniformMat4f("MVP", Mproj * Mview3D * scale_xy);
+            material.SetUniform1i("axis", 2);
+            material.SetUniform1f("slider", gui_VolumeSlice[2]);
+            rect.Draw();
+
+            // draw the XZ plane
+            material.SetUniformMat4f("MVP", Mproj * Mview3D * scale_zx * rotate_zx);
+            material.SetUniform1i("axis", 1);
+            material.SetUniform1f("slider", gui_VolumeSlice[1]);
+            rect.Draw();
+
+            // draw the YZ plane
+            material.SetUniformMat4f("MVP", Mproj * Mview3D * scale_zy * rotate_zy);
+            material.SetUniform1i("axis", 0);
+            material.SetUniform1f("slider", gui_VolumeSlice[0]);
+            rect.Draw();
+
+
+        }
         material.End();
 
         glViewport(0, 0, display_w, display_h);
