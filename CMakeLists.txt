@@ -39,6 +39,8 @@ configure_file(Roboto-Medium.ttf
 file(COPY data DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 configure_file(slicer.shader 
 				slicer.shader COPYONLY)
+configure_file(dot.shader 
+				dot.shader COPYONLY)
 
 #create an executable
 add_executable(glOrthoView
