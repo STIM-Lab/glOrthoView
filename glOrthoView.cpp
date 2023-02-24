@@ -19,6 +19,7 @@ const char* glsl_version = "#version 130";              // specify the version o
 ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.00f);   // specify the OpenGL color used to clear the back buffer
 float gui_VolumeSize[] = {1.0f, 1.0f, 1.0f};            // initialize the volume size to 1 (uniform)
 float gui_VolumeSlice[] = { 0.5f, 0.5f, 0.5f };         // current volume slice being displayed [0.0, 1.0]
+float coordinates[] = { 0.0f, 0.0f, 0.0f };
 
 tira::camera cam;                                       // create a perspective camera for 3D visualization of the volume
 bool right_mouse_pressed = false;                       // flag indicates when the right mouse button is being dragged
@@ -33,6 +34,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     }
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
         right_mouse_pressed = false;
+
 }
 
 static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
@@ -123,7 +125,6 @@ int main(int argc, char** argv)
         glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
 
         float aspect = (float)display_w / (float)display_h;
-                
 
         // calculate the aspect ratios for each plane
         float xy_aspect = gui_VolumeSize[0] / gui_VolumeSize[1];
@@ -169,7 +170,6 @@ int main(int argc, char** argv)
         glm::mat4 model_yz = trans_yz * scale_yz * rotate_yz;
 
 
-        glm::mat4 Mproj;
         if (aspect > 1) {
             Mproj = glm::ortho(-0.5 * aspect * S, 0.5 * aspect * S, -0.5 * S, 0.5 * S, 0.0, 10000.0);
         }
@@ -177,12 +177,16 @@ int main(int argc, char** argv)
             Mproj = glm::ortho(-0.5 * S, 0.5 * S, -0.5 * (1.0 / aspect) * S, 0.5 * (1.0 / aspect) * S, 0.0, 10000.0);
         }
 
+        // reset the whole window to initial state if reset button is pressed
         if (reset) {
             for (int i = 0; i < 3; i++) {
                 gui_VolumeSize[i] = 1.0f;
                 gui_VolumeSlice[i] = 0.5f;
             }
+            cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);
+            cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
         }
+
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
         

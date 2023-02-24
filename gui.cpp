@@ -8,6 +8,7 @@ float ui_scale = 1.5f;                                  // scale value for the U
 bool reset = false;
 extern float gui_VolumeSize[];
 extern float gui_VolumeSlice[];
+extern float coordinates[];
 
 void glfw_error_callback(int error, const char* description)
 {
@@ -107,8 +108,10 @@ void RenderUI() {
         // Adjusting the size of the volume along each axis
         ImGui::SliderFloat3("Volume Size", gui_VolumeSize, 0.25f, 2.0f);
         ImGui::SliderFloat3("Volume Slice", gui_VolumeSlice, 0.0f, 1.0f);
-        reset = ImGui::Button("Reset", ImVec2(70, 50));
-
+        ImGui::Spacing();
+        reset = ImGui::Button("Reset", ImVec2(70, 35));
+        
+        
 
         ImGui::GetFont()->Scale = old_size;
         ImGui::PopFont();
