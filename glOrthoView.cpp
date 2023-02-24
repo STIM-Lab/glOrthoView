@@ -21,6 +21,7 @@ float gui_VolumeSize[] = {1.0f, 1.0f, 1.0f};            // initialize the volume
 float gui_VolumeSlice[] = { 0.5f, 0.5f, 0.5f };         // current volume slice being displayed [0.0, 1.0]
 float coordinates[] = {0.0f, 0.0f, 0.0f};
 int axis = 0;
+bool draw_dot = false;
 tira::camera cam;                                       // create a perspective camera for 3D visualization of the volume
 bool right_mouse_pressed = false;                       // flag indicates when the right mouse button is being dragged
 double mouse_x, mouse_y;
@@ -47,18 +48,20 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         // window x: (800, 1600)   y: (0, 600)
         if (mouse_x > half_w && mouse_y < half_h) {                     // maps the cursor's position to (-1, 1) coordinates
             axis = 0;
-            coordinates[0] = (mouse_x - half_w) * (2 / half_w) - 1;
-            coordinates[1] = (mouse_y) * (2 / half_h) - 1;
+            coordinates[0] = (mouse_x - half_w) * (1 / half_w) - 0.5f;
+            coordinates[1] = (mouse_y) * (1 / half_h) - 0.5f;
             coordinates[2] = gui_VolumeSlice[2];
+            draw_dot = true;
         }
 
         // for XZ plane
         // window x: (800, 1600)   y: (600, 1200)
         if (mouse_x > half_w && mouse_y > half_h) {                     // maps the cursor's position to (-1, 1) coordinates
             axis = 1;
-            coordinates[0] = (mouse_x - half_w) * (2 / half_w) - 1;
+            coordinates[0] = (mouse_x - half_w) * (1 / half_w) - 0.5f;
             coordinates[1] = gui_VolumeSlice[1];
-            coordinates[2] = (mouse_y - half_h) * (2 / half_h) - 1;
+            coordinates[2] = (mouse_y - half_h) * (1 / half_h) - 0.5f;
+            draw_dot = true;
         }
 
         // for YZ plane
@@ -66,8 +69,9 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         if (mouse_x < half_w && mouse_y > half_h) {                     // maps the cursor's position to (-1, 1) coordinates
             axis = 2;
             coordinates[0] = gui_VolumeSlice[0];
-            coordinates[1] = (mouse_x) * (2 / half_w) - 1;
-            coordinates[2] = (mouse_y - half_h) * (2 / half_h) - 1;
+            coordinates[1] = (mouse_x) * (1 / half_w) - 0.5f;
+            coordinates[2] = (mouse_y - half_h) * (1 / half_h) - 0.5f;
+            draw_dot = true;
         }
     }
 }
@@ -101,14 +105,20 @@ int main(int argc, char** argv)
 
     // Load or create an example volume
     tira::glVolume<unsigned char> vol;
-    //vol.load("vessels/*.bmp");                                            // uncomment to load from the demo image stack
-    vol.generate_rgb(256, 256, 256, 8);                                     // generate an RGB grid texture
+    vol.load("data/*.bmp");                                            // uncomment to load from the demo image stack
+    //vol.generate_rgb(256, 256, 256, 8);                                     // generate an RGB grid texture
 
 
     // generate the basic geometry and materials for rendering
     tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();   // create a rectangle for rendering volume cross-sections
     tira::glMaterial material("slicer.shader");                             // slicer shader renders a cross-section of the geometry
     material.SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);          // bind the volume to the material
+
+    // generate a dot when user clicks on the plane
+    tira::glGeometry circle = tira::glGeometry::GenerateCircle<float>();
+    tira::glGeometry sphere = tira::glGeometry::GenerateSphere<float>(20, 20);
+    tira::glShader dot("dot.shader");
+
 
     float vs_max = std::max(gui_VolumeSize[0], std::max(gui_VolumeSize[1], gui_VolumeSize[2]));    // find the maximum size of the volume
     cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);
@@ -221,6 +231,8 @@ int main(int argc, char** argv)
         else if (axis == 1) cords = invers_mat_xz * cords;
         else cords = invers_mat_yz * cords;
 
+        glm::mat4 trans_sph = glm::translate(glm::mat4(1.0f), glm::vec3(coordinates[0], coordinates[1], coordinates[2]));
+        glm::mat4 scale_sph = glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
 
         // reset the whole window to initial state if reset button is pressed
         if (reset) {
@@ -231,11 +243,13 @@ int main(int argc, char** argv)
             }
             cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);
             cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+            draw_dot = false;
         }
-
+        glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
-        
+        glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
+
         /****************************************************/
         /*      Draw Stuff To The Viewport                  */
         /****************************************************/
@@ -243,6 +257,7 @@ int main(int argc, char** argv)
         // Bind the volume material and render all of the viewports
         material.Begin();
         {
+
             // Upper Right (X-Y) Viewport
             glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
             material.SetUniformMat4f("MVP", Mproj * Mview_xy * model_xy);
@@ -268,7 +283,7 @@ int main(int argc, char** argv)
 
             // Render the upper left (3D) view
             glViewport(0, display_h / 2, display_w / 2, display_h / 2);
-            glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
+            
             
             // draw the XY plane
             material.SetUniformMat4f("MVP", Mproj * Mview3D * model_xy);
@@ -287,10 +302,17 @@ int main(int argc, char** argv)
             material.SetUniform1i("axis", 0);
             material.SetUniform1f("slider", gui_VolumeSlice[0]);
             rect.Draw();
-
-
+            
+            if (draw_dot) {
+                dot.Bind();
+                dot.SetUniformMat4f("Trans", Mproj * Mview3D * trans_sph * scale_sph);
+                sphere.Draw();
+            }
+            
         }
         material.End();
+        
+        
 
         glViewport(0, 0, display_w, display_h);
         glBegin(GL_LINES);
