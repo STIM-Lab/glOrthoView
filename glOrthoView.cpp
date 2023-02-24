@@ -171,6 +171,9 @@ int main(int argc, char** argv)
 
         float aspect = (float)display_w / (float)display_h;
 
+        float ortho_world[2];                                       // stores the size of the orthographic viewports in world space
+        int ortho_pixel[2] = { display_w / 2, display_h / 2 };      // store the size of the orthographic viewports in pixels
+
         // calculate the aspect ratios for each plane
         float xy_aspect = gui_VolumeSize[0] / gui_VolumeSize[1];
         float xz_aspect = gui_VolumeSize[0] / gui_VolumeSize[2];
@@ -214,13 +217,17 @@ int main(int argc, char** argv)
         glm::mat4 model_xz = trans_xz * scale_xz * rotate_xz;
         glm::mat4 model_yz = trans_yz * scale_yz * rotate_yz;
 
+        
 
         if (aspect > 1) {
-            Mproj = glm::ortho(-0.5 * aspect * S, 0.5 * aspect * S, -0.5 * S, 0.5 * S, 0.0, 10000.0);
+            ortho_world[0] = aspect * S;
+            ortho_world[1] = S;
         }
         else {
-            Mproj = glm::ortho(-0.5 * S, 0.5 * S, -0.5 * (1.0 / aspect) * S, 0.5 * (1.0 / aspect) * S, 0.0, 10000.0);
+            ortho_world[0] = S;
+            ortho_world[1] = (1.0 / aspect) * S;
         }
+        Mproj = glm::ortho(-0.5 * ortho_world[0], 0.5 * ortho_world[0], -0.5 * ortho_world[1], 0.5 * ortho_world[1], 0.0, 10000.0);
 
         // mapping the cursor's position back to the local space position
         glm::vec4 cords = glm::vec4(coordinates[0], coordinates[1], coordinates[2], 1.0f);
