@@ -19,8 +19,8 @@ const char* glsl_version = "#version 130";              // specify the version o
 ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.00f);   // specify the OpenGL color used to clear the back buffer
 float gui_VolumeSize[] = {1.0f, 1.0f, 1.0f};            // initialize the volume size to 1 (uniform)
 float gui_VolumeSlice[] = { 0.5f, 0.5f, 0.5f };         // current volume slice being displayed [0.0, 1.0]
-float coordinates[] = { 0.0f, 0.0f, 0.0f };
-
+float coordinates[] = {0.0f, 0.0f, 0.0f};
+int axis = 0;
 tira::camera cam;                                       // create a perspective camera for 3D visualization of the volume
 bool right_mouse_pressed = false;                       // flag indicates when the right mouse button is being dragged
 double mouse_x, mouse_y;
@@ -35,6 +35,41 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
         right_mouse_pressed = false;
 
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        glfwGetCursorPos(window, &mouse_x, &mouse_y);                   // save the mouse position when the left button is pressed
+        int display_w, display_h;                                       // size of the frame buffer (openGL display)
+        glfwGetFramebufferSize(window, &display_w, &display_h);         // get the frame buffer size
+
+        float half_w = (float)display_w / 2.0f;
+        float half_h = (float)display_h / 2.0f;
+
+        // for XY plane
+        // window x: (800, 1600)   y: (0, 600)
+        if (mouse_x > half_w && mouse_y < half_h) {                     // maps the cursor's position to (-1, 1) coordinates
+            axis = 0;
+            coordinates[0] = (mouse_x - half_w) * (2 / half_w) - 1;
+            coordinates[1] = (mouse_y) * (2 / half_h) - 1;
+            coordinates[2] = gui_VolumeSlice[2];
+        }
+
+        // for XZ plane
+        // window x: (800, 1600)   y: (600, 1200)
+        if (mouse_x > half_w && mouse_y > half_h) {                     // maps the cursor's position to (-1, 1) coordinates
+            axis = 1;
+            coordinates[0] = (mouse_x - half_w) * (2 / half_w) - 1;
+            coordinates[1] = gui_VolumeSlice[1];
+            coordinates[2] = (mouse_y - half_h) * (2 / half_h) - 1;
+        }
+
+        // for YZ plane
+        // window x: (800, 1600)   y: (0, 600)
+        if (mouse_x < half_w && mouse_y > half_h) {                     // maps the cursor's position to (-1, 1) coordinates
+            axis = 2;
+            coordinates[0] = gui_VolumeSlice[0];
+            coordinates[1] = (mouse_x) * (2 / half_w) - 1;
+            coordinates[2] = (mouse_y - half_h) * (2 / half_h) - 1;
+        }
+    }
 }
 
 static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
@@ -93,12 +128,12 @@ int main(int argc, char** argv)
         glm::vec3(0.0f, 0.0f,  0.0f),                // center
         glm::vec3(0.0f, 1.0f,  0.0f));               // up
 
-    glm::mat4 Mview_zx = glm::lookAt(          
+    glm::mat4 Mview_xz = glm::lookAt(          
         glm::vec3(0.0f,  1.0f, 0.0f),                // eye
         glm::vec3(0.0f,  0.0f, 0.0f),                // center
         glm::vec3(0.0f,  0.0f, 1.0f));               // up
     
-    glm::mat4 Mview_zy = glm::lookAt(
+    glm::mat4 Mview_yz = glm::lookAt(
         glm::vec3(-1.0f, 0.0f, 0.0f),                // eye
         glm::vec3( 0.0f, 0.0f, 0.0f),                // center
         glm::vec3( 0.0f, 0.0f, 1.0f));               // up
@@ -177,11 +212,22 @@ int main(int argc, char** argv)
             Mproj = glm::ortho(-0.5 * S, 0.5 * S, -0.5 * (1.0 / aspect) * S, 0.5 * (1.0 / aspect) * S, 0.0, 10000.0);
         }
 
+        // mapping the cursor's position back to the local space position
+        glm::vec4 cords = glm::vec4(coordinates[0], coordinates[1], coordinates[2], 1.0f);
+        glm::mat4 invers_mat_xy = glm::inverse(Mproj) * glm::inverse(Mview_xy) * glm::inverse(model_xy);
+        glm::mat4 invers_mat_xz = glm::inverse(Mproj) * glm::inverse(Mview_xz) * glm::inverse(model_xz);
+        glm::mat4 invers_mat_yz = glm::inverse(Mproj) * glm::inverse(Mview_yz) * glm::inverse(model_yz);
+        if (axis == 0)  cords = invers_mat_xy * cords;
+        else if (axis == 1) cords = invers_mat_xz * cords;
+        else cords = invers_mat_yz * cords;
+
+
         // reset the whole window to initial state if reset button is pressed
         if (reset) {
             for (int i = 0; i < 3; i++) {
                 gui_VolumeSize[i] = 1.0f;
                 gui_VolumeSlice[i] = 0.5f;
+                coordinates[i] = 0.0f;
             }
             cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);
             cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
@@ -207,7 +253,7 @@ int main(int argc, char** argv)
             // Lower Right (X-Z) Viewport
             glViewport(display_w / 2, 0, display_w / 2, display_h / 2);
             //material.Begin();
-            material.SetUniformMat4f("MVP", Mproj * Mview_zx * model_xz);
+            material.SetUniformMat4f("MVP", Mproj * Mview_xz * model_xz);
             material.SetUniform1i("axis", 1);
             material.SetUniform1f("slider", gui_VolumeSlice[1]);
             rect.Draw();
@@ -215,7 +261,7 @@ int main(int argc, char** argv)
             // Lower Left (Y-Z) Viewport
             glViewport(0, 0, display_w / 2, display_h / 2);
             //material.Begin();
-            material.SetUniformMat4f("MVP", Mproj * Mview_zy * model_yz);
+            material.SetUniformMat4f("MVP", Mproj * Mview_yz * model_yz);
             material.SetUniform1i("axis", 0);
             material.SetUniform1f("slider", gui_VolumeSlice[0]);
             rect.Draw();

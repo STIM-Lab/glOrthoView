@@ -106,12 +106,36 @@ void RenderUI() {
 
         
         // Adjusting the size of the volume along each axis
+        ImGui::Text("X\tY\tZ");
         ImGui::SliderFloat3("Volume Size", gui_VolumeSize, 0.25f, 2.0f);
         ImGui::SliderFloat3("Volume Slice", gui_VolumeSlice, 0.0f, 1.0f);
         ImGui::Spacing();
         reset = ImGui::Button("Reset", ImVec2(70, 35));
         
-        
+        ImGui::Spacing();
+
+        if (ImGui::BeginTable("Coordinates", 2, ImGuiTableFlags_Resizable + ImGuiTableFlags_Borders, ImVec2(0.0f, 5.0f), 2.0f))
+        {
+            ImGui::TableSetupColumn("Axis");
+            ImGui::TableSetupColumn("Value");
+            ImGui::TableHeadersRow();
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("X");
+            ImGui::TableNextColumn();
+            ImGui::Text("%f", coordinates[0]);
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("Y");
+            ImGui::TableNextColumn();
+            ImGui::Text("%f", coordinates[1]);
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("Z");
+            ImGui::TableNextColumn();
+            ImGui::Text("%f", coordinates[2]);
+            ImGui::EndTable();
+        }
 
         ImGui::GetFont()->Scale = old_size;
         ImGui::PopFont();
