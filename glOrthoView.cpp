@@ -111,7 +111,7 @@ int main(int argc, char** argv)
         glm::vec3(0.0f,  0.0f, 1.0f));               // up
     
     glm::mat4 Mview_yz = glm::lookAt(
-        glm::vec3(-1.0f, 0.0f, 0.0f),                // eye
+        glm::vec3(1.0f, 0.0f, 0.0f),                // eye
         glm::vec3( 0.0f, 0.0f, 0.0f),                // center
         glm::vec3( 0.0f, 0.0f, 1.0f));               // up
 
@@ -202,32 +202,27 @@ int main(int argc, char** argv)
         // window x: (800, 1600)   y: (0, 600)
         if (mouse_x > ortho_pixel[0] && mouse_y < ortho_pixel[1]) {                     // maps the cursor's position to (-1, 1) coordinates
             axis = 0;
-            coordinates[0] = (mouse_x / ortho_pixel[0]) * ortho_world[0] - (ortho_world[0] / 2.0f);
-            coordinates[1] = (mouse_x / ortho_pixel[1]) * ortho_world[1] - (ortho_world[1] / 2.0f);
-            /*coordinates[0] = (mouse_x - ortho_pixel[0]) * (1 / ortho_pixel[0]) - 0.5f;
-            coordinates[1] = (mouse_y) * (1 / ortho_pixel[1]) - 0.5f;*/
-            coordinates[2] = gui_VolumeSlice[2];
-            draw_dot = true;
+            coordinates[0] = ((mouse_x / ortho_pixel[0]) - 1) * ortho_world[0] - (ortho_world[0] / 2.0f);
+            coordinates[1] = -((mouse_y / ortho_pixel[1]) * ortho_world[1] - (ortho_world[1] / 2.0f));
+            coordinates[2] = gui_VolumeSlice[2] - 0.5f;
         }
 
         // for XZ plane
         // window x: (800, 1600)   y: (600, 1200)
         if (mouse_x > ortho_pixel[0] && mouse_y > ortho_pixel[1]) {                     // maps the cursor's position to (-1, 1) coordinates
             axis = 1;
-            coordinates[0] = (mouse_x - ortho_pixel[0]) * (1 / ortho_pixel[0]) - 0.5f;
-            coordinates[1] = gui_VolumeSlice[1];
-            coordinates[2] = (mouse_y - ortho_pixel[1]) * (1 / ortho_pixel[1]) - 0.5f;
-            draw_dot = true;
+            coordinates[0] = ((mouse_x / ortho_pixel[0]) - 1) * ortho_world[0] - (ortho_world[0] / 2.0f);
+            coordinates[1] = gui_VolumeSlice[1] - 0.5f;
+            coordinates[2] = -(((mouse_y / ortho_pixel[1]) - 1 ) * ortho_world[1] - (ortho_world[1] / 2.0f));
         }
 
         // for YZ plane
         // window x: (800, 1600)   y: (0, 600)
         if (mouse_x < ortho_pixel[0] && mouse_y > ortho_pixel[1]) {                     // maps the cursor's position to (-1, 1) coordinates
             axis = 2;
-            coordinates[0] = gui_VolumeSlice[0];
-            coordinates[1] = (mouse_x) * (1 / ortho_pixel[0]) - 0.5f;
-            coordinates[2] = (mouse_y - ortho_pixel[1]) * (1 / ortho_pixel[1]) - 0.5f;
-            draw_dot = true;
+            coordinates[0] = gui_VolumeSlice[0] - 0.5f;
+            coordinates[1] = (mouse_x / ortho_pixel[0]) * ortho_world[0] - (ortho_world[0] / 2.0f);
+            coordinates[2] = -(((mouse_y / ortho_pixel[1]) - 1) * ortho_world[1] - (ortho_world[1] / 2.0f));
         }
 
 

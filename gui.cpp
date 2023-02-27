@@ -95,15 +95,6 @@ void RenderUI() {
         static int counter = 0;
 
         ImGui::Begin("Volume Slicer");
-        //ImGui::SliderFloat("X-Y axis", &a_slider_value, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-
-        //ImGui::SliderFloat("Z-X axis", &slider_2, 0.0f, 1.0f);
-        //ImGui::SliderFloat("Z-Y axis", &slider_3, 0.0f, 1.0f);
-        
-        //ImGui::End();                                                           // End rendering the "Hello, world!" window
-
-        //ImGui::Begin("Volume Size");
-
         
         // Adjusting the size of the volume along each axis
         ImGui::Text("X\tY\tZ");
