@@ -38,41 +38,6 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         glfwGetCursorPos(window, &mouse_x, &mouse_y);                   // save the mouse position when the left button is pressed
-        int display_w, display_h;                                       // size of the frame buffer (openGL display)
-        glfwGetFramebufferSize(window, &display_w, &display_h);         // get the frame buffer size
-
-        float half_w = (float)display_w / 2.0f;
-        float half_h = (float)display_h / 2.0f;
-
-        // for XY plane
-        // window x: (800, 1600)   y: (0, 600)
-        if (mouse_x > half_w && mouse_y < half_h) {                     // maps the cursor's position to (-1, 1) coordinates
-            axis = 0;
-            coordinates[0] = (mouse_x - half_w) * (1 / half_w) - 0.5f;
-            coordinates[1] = (mouse_y) * (1 / half_h) - 0.5f;
-            coordinates[2] = gui_VolumeSlice[2];
-            draw_dot = true;
-        }
-
-        // for XZ plane
-        // window x: (800, 1600)   y: (600, 1200)
-        if (mouse_x > half_w && mouse_y > half_h) {                     // maps the cursor's position to (-1, 1) coordinates
-            axis = 1;
-            coordinates[0] = (mouse_x - half_w) * (1 / half_w) - 0.5f;
-            coordinates[1] = gui_VolumeSlice[1];
-            coordinates[2] = (mouse_y - half_h) * (1 / half_h) - 0.5f;
-            draw_dot = true;
-        }
-
-        // for YZ plane
-        // window x: (800, 1600)   y: (0, 600)
-        if (mouse_x < half_w && mouse_y > half_h) {                     // maps the cursor's position to (-1, 1) coordinates
-            axis = 2;
-            coordinates[0] = gui_VolumeSlice[0];
-            coordinates[1] = (mouse_x) * (1 / half_w) - 0.5f;
-            coordinates[2] = (mouse_y - half_h) * (1 / half_h) - 0.5f;
-            draw_dot = true;
-        }
     }
 }
 
@@ -130,7 +95,9 @@ int main(int argc, char** argv)
 
     // Rotation Matrix
     glm::mat4 rotate_xz = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0, 0.0, 0.0));
-    glm::mat4 rotate_yz = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0, 1.0, 0.0));
+    glm::mat4 rotate_yz = glm::rotate(glm::mat4(1.0f), glm::radians(270.0f), glm::vec3(0.0, 1.0, 0.0));
+    rotate_yz = glm::rotate(rotate_yz, glm::radians(270.0f), glm::vec3(0.0, 0.0, 1.0));
+    rotate_yz = glm::rotate(rotate_yz, glm::radians(180.0f), glm::vec3(0.0, 1.0, 0.0));
 
     // View Matrix
     glm::mat4 Mview_xy = glm::lookAt(
@@ -229,15 +196,43 @@ int main(int argc, char** argv)
         }
         Mproj = glm::ortho(-0.5 * ortho_world[0], 0.5 * ortho_world[0], -0.5 * ortho_world[1], 0.5 * ortho_world[1], 0.0, 10000.0);
 
-        // mapping the cursor's position back to the local space position
-        glm::vec4 cords = glm::vec4(coordinates[0], coordinates[1], coordinates[2], 1.0f);
-        glm::mat4 invers_mat_xy = glm::inverse(Mproj) * glm::inverse(Mview_xy) * glm::inverse(model_xy);
-        glm::mat4 invers_mat_xz = glm::inverse(Mproj) * glm::inverse(Mview_xz) * glm::inverse(model_xz);
-        glm::mat4 invers_mat_yz = glm::inverse(Mproj) * glm::inverse(Mview_yz) * glm::inverse(model_yz);
-        if (axis == 0)  cords = invers_mat_xy * cords;
-        else if (axis == 1) cords = invers_mat_xz * cords;
-        else cords = invers_mat_yz * cords;
 
+
+        // for XY plane
+        // window x: (800, 1600)   y: (0, 600)
+        if (mouse_x > ortho_pixel[0] && mouse_y < ortho_pixel[1]) {                     // maps the cursor's position to (-1, 1) coordinates
+            axis = 0;
+            coordinates[0] = (mouse_x / ortho_pixel[0]) * ortho_world[0] - (ortho_world[0] / 2.0f);
+            coordinates[1] = (mouse_x / ortho_pixel[1]) * ortho_world[1] - (ortho_world[1] / 2.0f);
+            /*coordinates[0] = (mouse_x - ortho_pixel[0]) * (1 / ortho_pixel[0]) - 0.5f;
+            coordinates[1] = (mouse_y) * (1 / ortho_pixel[1]) - 0.5f;*/
+            coordinates[2] = gui_VolumeSlice[2];
+            draw_dot = true;
+        }
+
+        // for XZ plane
+        // window x: (800, 1600)   y: (600, 1200)
+        if (mouse_x > ortho_pixel[0] && mouse_y > ortho_pixel[1]) {                     // maps the cursor's position to (-1, 1) coordinates
+            axis = 1;
+            coordinates[0] = (mouse_x - ortho_pixel[0]) * (1 / ortho_pixel[0]) - 0.5f;
+            coordinates[1] = gui_VolumeSlice[1];
+            coordinates[2] = (mouse_y - ortho_pixel[1]) * (1 / ortho_pixel[1]) - 0.5f;
+            draw_dot = true;
+        }
+
+        // for YZ plane
+        // window x: (800, 1600)   y: (0, 600)
+        if (mouse_x < ortho_pixel[0] && mouse_y > ortho_pixel[1]) {                     // maps the cursor's position to (-1, 1) coordinates
+            axis = 2;
+            coordinates[0] = gui_VolumeSlice[0];
+            coordinates[1] = (mouse_x) * (1 / ortho_pixel[0]) - 0.5f;
+            coordinates[2] = (mouse_y - ortho_pixel[1]) * (1 / ortho_pixel[1]) - 0.5f;
+            draw_dot = true;
+        }
+
+
+
+        // mapping the cursor's position back to the local space position
         glm::mat4 trans_sph = glm::translate(glm::mat4(1.0f), glm::vec3(coordinates[0], coordinates[1], coordinates[2]));
         glm::mat4 scale_sph = glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
 
