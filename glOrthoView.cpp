@@ -81,15 +81,15 @@ int main(int argc, char** argv)
     material.SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);          // bind the volume to the material
 
     // generate a dot when user clicks on the plane
-    tira::glGeometry circle = tira::glGeometry::GenerateCircle<float>();
     tira::glGeometry sphere = tira::glGeometry::GenerateSphere<float>(20, 20);
     tira::glShader dot("dot.shader");
 
+    // initialize the camera for 3D view
+    float vs_max = std::max(gui_VolumeSize[0], std::max(gui_VolumeSize[1], gui_VolumeSize[2]));         // find the maximum size of the volume
+    cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);                                                // eye
+    cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);                                                     // center and up
 
-    float vs_max = std::max(gui_VolumeSize[0], std::max(gui_VolumeSize[1], gui_VolumeSize[2]));    // find the maximum size of the volume
-    cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);
-    //cam.setPosition(0, 0, -2 * vs_max);
-    cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+
 
     // Projection Matrix
     glm::mat4 Mproj;
@@ -146,7 +146,8 @@ int main(int argc, char** argv)
         scale_yz = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, gui_VolumeSize[1], gui_VolumeSize[2]));
 
         // Translation matrix
-        // maps the translation from (0,1) to (-gui_VolumeSize/2 - gui_VolumeSize/2)
+        // change the position of plane when the slice slider changes
+        // when size is changed, maps from (0,1) to (-VolumeSize/2 , VolumeSize/2)
         float map_x = (gui_VolumeSlice[2] * (gui_VolumeSize[2])) - (gui_VolumeSize[2] / 2);
         float map_y = (gui_VolumeSlice[1] * (gui_VolumeSize[1])) - (gui_VolumeSize[1] / 2);
         float map_z = (gui_VolumeSlice[0] * (gui_VolumeSize[0])) - (gui_VolumeSize[0] / 2);
