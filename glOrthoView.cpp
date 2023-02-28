@@ -38,6 +38,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         glfwGetCursorPos(window, &mouse_x, &mouse_y);                   // save the mouse position when the left button is pressed
+        draw_dot = true;
     }
 }
 
@@ -93,15 +94,9 @@ int main(int argc, char** argv)
     // Projection Matrix
     glm::mat4 Mproj;
 
-    // Rotation Matrix
-    glm::mat4 rotate_xz = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0, 0.0, 0.0));
-    glm::mat4 rotate_yz = glm::rotate(glm::mat4(1.0f), glm::radians(270.0f), glm::vec3(0.0, 1.0, 0.0));
-    rotate_yz = glm::rotate(rotate_yz, glm::radians(270.0f), glm::vec3(0.0, 0.0, 1.0));
-    rotate_yz = glm::rotate(rotate_yz, glm::radians(180.0f), glm::vec3(0.0, 1.0, 0.0));
-
     // View Matrix
     glm::mat4 Mview_xy = glm::lookAt(
-        glm::vec3(0.0f, 0.0f, -1.0f),                // eye
+        glm::vec3(0.0f, 0.0f, 1.0f),                // eye
         glm::vec3(0.0f, 0.0f,  0.0f),                // center
         glm::vec3(0.0f, 1.0f,  0.0f));               // up
 
@@ -135,11 +130,56 @@ int main(int argc, char** argv)
         
         //glViewport(0, 0, display_w, display_h);                     // specifies the area of the window where OpenGL can render
         glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+        
 
+        ////////////////////////////////    Model Matrix    /////////////////////////////////////////
+        
+        // Rotation Matrix
+        glm::mat4 rotate_xz = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0, 0.0, 0.0));
+        glm::mat4 rotate_yz = glm::rotate(glm::mat4(1.0f), glm::radians(270.0f), glm::vec3(0.0, 1.0, 0.0));
+        rotate_yz = glm::rotate(rotate_yz, glm::radians(270.0f), glm::vec3(0.0, 0.0, 1.0));
+        rotate_yz = glm::rotate(rotate_yz, glm::radians(180.0f), glm::vec3(0.0, 1.0, 0.0));
+
+        // Scale Matrix
+        scale_xy = glm::scale(glm::mat4(1.0f), glm::vec3(gui_VolumeSize[0], gui_VolumeSize[1], 1.0f));
+        scale_xz = glm::scale(glm::mat4(1.0f), glm::vec3(gui_VolumeSize[0], 1.0f, gui_VolumeSize[2]));
+        scale_yz = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, gui_VolumeSize[1], gui_VolumeSize[2]));
+
+        // Translation matrix
+        // maps the translation from (0,1) to (-gui_VolumeSize/2 - gui_VolumeSize/2)
+        float map_x = (gui_VolumeSlice[2] * (gui_VolumeSize[2])) - (gui_VolumeSize[2] / 2);
+        float map_y = (gui_VolumeSlice[1] * (gui_VolumeSize[1])) - (gui_VolumeSize[1] / 2);
+        float map_z = (gui_VolumeSlice[0] * (gui_VolumeSize[0])) - (gui_VolumeSize[0] / 2);
+        trans_xy = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, map_x));
+        trans_xz = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, map_y, 0.0f));
+        trans_yz = glm::translate(glm::mat4(1.0f), glm::vec3(map_z, 0.0f, 0.0f));
+
+        // Model matrix: translation + rotation + scaling
+        glm::mat4 model_xy = trans_xy * scale_xy;
+        glm::mat4 model_xz = trans_xz * scale_xz * rotate_xz;
+        glm::mat4 model_yz = trans_yz * scale_yz * rotate_yz;
+
+
+        ////////////////////////////////////////    Reset    ////////////////////////////////////////
+
+        // reset the whole window to initial state if reset button is pressed
+        if (reset) {
+            for (int i = 0; i < 3; i++) {
+                gui_VolumeSize[i] = 1.0f;
+                gui_VolumeSlice[i] = 0.5f;
+                coordinates[i] = 0.0f;
+            }
+            cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);
+            cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+            draw_dot = false;
+        }
+
+        //////////////////////////////    Projection Matrix    //////////////////////////////////////
         float aspect = (float)display_w / (float)display_h;
 
         float ortho_world[2];                                       // stores the size of the orthographic viewports in world space
         int ortho_pixel[2] = { display_w / 2, display_h / 2 };      // store the size of the orthographic viewports in pixels
+
 
         // calculate the aspect ratios for each plane
         float xy_aspect = gui_VolumeSize[0] / gui_VolumeSize[1];
@@ -168,22 +208,8 @@ int main(int argc, char** argv)
             Syz = gui_VolumeSize[1];
         }
 
+
         float S = std::max(Sxy, std::max(Sxz, Syz));                                // S is now the size of whichever dimension of the volume is touching the boundary of the viewport
-
-        scale_xy = glm::scale(glm::mat4(1.0f), glm::vec3(gui_VolumeSize[0], gui_VolumeSize[1], 1.0f));
-        scale_xz = glm::scale(glm::mat4(1.0f), glm::vec3(gui_VolumeSize[0], 1.0f, gui_VolumeSize[2]));
-        scale_yz = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, gui_VolumeSize[1], gui_VolumeSize[2]));
-
-        // Translation matrix
-        trans_xy = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, gui_VolumeSlice[2] - 0.5f));
-        trans_xz = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, gui_VolumeSlice[1] - 0.5f, 0.0f));
-        trans_yz = glm::translate(glm::mat4(1.0f), glm::vec3(gui_VolumeSlice[0] - 0.5f, 0.0f, 0.0f));
-
-        // Model matrix - including translation + rotation + scaling
-        glm::mat4 model_xy = trans_xy * scale_xy;
-        glm::mat4 model_xz = trans_xz * scale_xz * rotate_xz;
-        glm::mat4 model_yz = trans_yz * scale_yz * rotate_yz;
-
         
 
         if (aspect > 1) {
@@ -194,58 +220,48 @@ int main(int argc, char** argv)
             ortho_world[0] = S;
             ortho_world[1] = (1.0 / aspect) * S;
         }
-        Mproj = glm::ortho(-0.5 * ortho_world[0], 0.5 * ortho_world[0], -0.5 * ortho_world[1], 0.5 * ortho_world[1], 0.0, 10000.0);
+        Mproj = glm::ortho(-0.5 * ortho_world[0], 0.5 * ortho_world[0], 0.5 * ortho_world[1], -0.5 * ortho_world[1], 0.0, 10000.0);
+        glm::mat4 Mproj_3D = glm::ortho(-0.5 * ortho_world[0], 0.5 * ortho_world[0], -0.5 * ortho_world[1], 0.5 * ortho_world[1], 0.0, 10000.0);
+        glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
 
-
-
-        // for XY plane
-        // window x: (800, 1600)   y: (0, 600)
-        if (mouse_x > ortho_pixel[0] && mouse_y < ortho_pixel[1]) {                     // maps the cursor's position to (-1, 1) coordinates
+        ////////////////////////////////////    Coordinate selection    /////////////////////////////
+        // 
+        // if clicked on XY plane
+        if (mouse_x > ortho_pixel[0] && mouse_y < ortho_pixel[1] && draw_dot) {                     // maps the cursor's position to (-1, 1) coordinates
             axis = 0;
             coordinates[0] = ((mouse_x / ortho_pixel[0]) - 1) * ortho_world[0] - (ortho_world[0] / 2.0f);
             coordinates[1] = -((mouse_y / ortho_pixel[1]) * ortho_world[1] - (ortho_world[1] / 2.0f));
             coordinates[2] = gui_VolumeSlice[2] - 0.5f;
         }
 
-        // for XZ plane
-        // window x: (800, 1600)   y: (600, 1200)
-        if (mouse_x > ortho_pixel[0] && mouse_y > ortho_pixel[1]) {                     // maps the cursor's position to (-1, 1) coordinates
+        // if clicked on XZ plane
+
+        if (mouse_x > ortho_pixel[0] && mouse_y > ortho_pixel[1] && draw_dot) {                     // maps the cursor's position to (-1, 1) coordinates
             axis = 1;
             coordinates[0] = ((mouse_x / ortho_pixel[0]) - 1) * ortho_world[0] - (ortho_world[0] / 2.0f);
             coordinates[1] = gui_VolumeSlice[1] - 0.5f;
             coordinates[2] = -(((mouse_y / ortho_pixel[1]) - 1 ) * ortho_world[1] - (ortho_world[1] / 2.0f));
         }
 
-        // for YZ plane
+        // if clicked on YZ plane
         // window x: (800, 1600)   y: (0, 600)
-        if (mouse_x < ortho_pixel[0] && mouse_y > ortho_pixel[1]) {                     // maps the cursor's position to (-1, 1) coordinates
+        if (mouse_x < ortho_pixel[0] && mouse_y > ortho_pixel[1] && draw_dot) {                     // maps the cursor's position to (-1, 1) coordinates
             axis = 2;
             coordinates[0] = gui_VolumeSlice[0] - 0.5f;
             coordinates[1] = (mouse_x / ortho_pixel[0]) * ortho_world[0] - (ortho_world[0] / 2.0f);
             coordinates[2] = -(((mouse_y / ortho_pixel[1]) - 1) * ortho_world[1] - (ortho_world[1] / 2.0f));
         }
 
-
-
         // mapping the cursor's position back to the local space position
         glm::mat4 trans_sph = glm::translate(glm::mat4(1.0f), glm::vec3(coordinates[0], coordinates[1], coordinates[2]));
         glm::mat4 scale_sph = glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
 
-        // reset the whole window to initial state if reset button is pressed
-        if (reset) {
-            for (int i = 0; i < 3; i++) {
-                gui_VolumeSize[i] = 1.0f;
-                gui_VolumeSlice[i] = 0.5f;
-                coordinates[i] = 0.0f;
-            }
-            cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);
-            cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-            draw_dot = false;
-        }
-        glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
+
+        
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
         glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
+
 
         /****************************************************/
         /*      Draw Stuff To The Viewport                  */
