@@ -97,12 +97,19 @@ void RenderUI() {
         ImGui::Begin("Volume Slicer");
         
         // Adjusting the size of the volume along each axis
-        ImGui::Text("X\tY\tZ");
+        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(230, 0, 0, 255));
+        ImGui::Text("\t\tX\t\t");
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 153, 51, 255));
+        ImGui::Text("\t\tY\t\t");
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 102, 255, 255));
+        ImGui::Text("\t\tZ");
+        ImGui::PopStyleColor(3);
         ImGui::SliderFloat3("Volume Size", gui_VolumeSize, 0.25f, 2.0f);
         ImGui::SliderFloat3("Volume Slice", gui_VolumeSlice, 0.0f, 1.0f);
         ImGui::Spacing();
         reset = ImGui::Button("Reset", ImVec2(70, 35));
-        
         ImGui::Spacing();
 
         if (ImGui::BeginTable("Coordinates", 2, ImGuiTableFlags_Resizable + ImGuiTableFlags_Borders, ImVec2(0.0f, 5.0f), 2.0f))

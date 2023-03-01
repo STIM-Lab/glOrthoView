@@ -10,7 +10,6 @@
 #include <iostream>
 #include <string>
 #include <stdio.h>
-
 #include "gui.h"
 
 
@@ -20,7 +19,7 @@ ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.00f);   // specify the OpenGL co
 float gui_VolumeSize[] = {1.0f, 1.0f, 1.0f};            // initialize the volume size to 1 (uniform)
 float gui_VolumeSlice[] = { 0.5f, 0.5f, 0.5f };         // current volume slice being displayed [0.0, 1.0]
 float coordinates[] = {0.0f, 0.0f, 0.0f};
-int axis = 0;
+float ortho_world[2];                                   // stores the size of the orthographic viewports in world space
 bool draw_dot = false;
 tira::camera cam;                                       // create a perspective camera for 3D visualization of the volume
 bool right_mouse_pressed = false;                       // flag indicates when the right mouse button is being dragged
@@ -55,6 +54,17 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
     }
 }
 
+static void draw_line(float x1, float y1, float x2, float y2, int axis) {
+    glBegin(GL_LINES);
+    if (axis == 0)  glColor3f(0.9f, 0.0f, 0.0f);
+    else if (axis == 1) glColor3f(0.0f, 0.6f, 0.2f);
+    else glColor3f(0.0f, 0.4f, 1.0f);
+    glVertex2f(x1, y1);
+    glVertex2f(x2, y2);
+    glEnd();
+}
+
+
 int main(int argc, char** argv)
 {
     // Initialize OpenGL
@@ -68,10 +78,10 @@ int main(int argc, char** argv)
         /* Problem: glewInit failed, something is seriously wrong. */
         fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
     }
-
+    
     // Load or create an example volume
     tira::glVolume<unsigned char> vol;
-    vol.load("data/*.bmp");                                            // uncomment to load from the demo image stack
+    vol.load("data/*.bmp");                                             // uncomment to load from the demo image stack
     //vol.generate_rgb(256, 256, 256, 8);                                     // generate an RGB grid texture
 
 
@@ -178,7 +188,7 @@ int main(int argc, char** argv)
         //////////////////////////////    Projection Matrix    //////////////////////////////////////
         float aspect = (float)display_w / (float)display_h;
 
-        float ortho_world[2];                                       // stores the size of the orthographic viewports in world space
+        
         int ortho_pixel[2] = { display_w / 2, display_h / 2 };      // store the size of the orthographic viewports in pixels
 
 
@@ -221,15 +231,13 @@ int main(int argc, char** argv)
             ortho_world[0] = S;
             ortho_world[1] = (1.0 / aspect) * S;
         }
-        Mproj = glm::ortho(-0.5 * ortho_world[0], 0.5 * ortho_world[0], 0.5 * ortho_world[1], -0.5 * ortho_world[1], 0.0, 10000.0);
-        glm::mat4 Mproj_3D = glm::ortho(-0.5 * ortho_world[0], 0.5 * ortho_world[0], -0.5 * ortho_world[1], 0.5 * ortho_world[1], 0.0, 10000.0);
+        Mproj = glm::ortho(-0.5 * ortho_world[0], 0.5 * ortho_world[0], -0.5 * ortho_world[1], 0.5 * ortho_world[1], 0.0, 10000.0);
         glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
 
         ////////////////////////////////////    Coordinate selection    /////////////////////////////
         // 
         // if clicked on XY plane
         if (mouse_x > ortho_pixel[0] && mouse_y < ortho_pixel[1] && draw_dot) {                     // maps the cursor's position to (-1, 1) coordinates
-            axis = 0;
             coordinates[0] = ((mouse_x / ortho_pixel[0]) - 1) * ortho_world[0] - (ortho_world[0] / 2.0f);
             coordinates[1] = -((mouse_y / ortho_pixel[1]) * ortho_world[1] - (ortho_world[1] / 2.0f));
             coordinates[2] = gui_VolumeSlice[2] - 0.5f;
@@ -238,7 +246,6 @@ int main(int argc, char** argv)
         // if clicked on XZ plane
 
         if (mouse_x > ortho_pixel[0] && mouse_y > ortho_pixel[1] && draw_dot) {                     // maps the cursor's position to (-1, 1) coordinates
-            axis = 1;
             coordinates[0] = ((mouse_x / ortho_pixel[0]) - 1) * ortho_world[0] - (ortho_world[0] / 2.0f);
             coordinates[1] = gui_VolumeSlice[1] - 0.5f;
             coordinates[2] = -(((mouse_y / ortho_pixel[1]) - 1 ) * ortho_world[1] - (ortho_world[1] / 2.0f));
@@ -247,7 +254,6 @@ int main(int argc, char** argv)
         // if clicked on YZ plane
         // window x: (800, 1600)   y: (0, 600)
         if (mouse_x < ortho_pixel[0] && mouse_y > ortho_pixel[1] && draw_dot) {                     // maps the cursor's position to (-1, 1) coordinates
-            axis = 2;
             coordinates[0] = gui_VolumeSlice[0] - 0.5f;
             coordinates[1] = (mouse_x / ortho_pixel[0]) * ortho_world[0] - (ortho_world[0] / 2.0f);
             coordinates[2] = -(((mouse_y / ortho_pixel[1]) - 1) * ortho_world[1] - (ortho_world[1] / 2.0f));
@@ -269,6 +275,9 @@ int main(int argc, char** argv)
         /****************************************************/
 
         // Bind the volume material and render all of the viewports
+
+        
+
         material.Begin();
         {
 
@@ -325,18 +334,30 @@ int main(int argc, char** argv)
             
         }
         material.End();
-        
-        
 
-        glViewport(0, 0, display_w, display_h);
-        glBegin(GL_LINES);
-        glVertex2f(-1.0, 0.0);
-        glVertex2f(1.0, 0.0);
-        glEnd();
-        glBegin(GL_LINES);
-        glVertex2f(0.0, -1.0);
-        glVertex2f(0.0, 1.0);
-        glEnd();
+        // define the size of viewed volume on the window
+        float scale_ow[2];
+        scale_ow[0] = 0.999 / ortho_world[0];
+        scale_ow[1] = 0.999 / ortho_world[1];
+
+        glDisable(GL_DEPTH_TEST);                                                           // disable depth to draw lines over the volume
+
+        // draw X-Y axis
+        glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
+        draw_line(-scale_ow[0], -scale_ow[1], scale_ow[0], -scale_ow[1], 0);
+        draw_line(-scale_ow[0], -scale_ow[1], -scale_ow[0],  scale_ow[1], 1);
+
+        // draw X-Z axis
+        glViewport(display_w / 2, 0, display_w / 2, display_h / 2);
+        draw_line(-scale_ow[0], -scale_ow[1], scale_ow[0], -scale_ow[1], 0);
+        draw_line(-scale_ow[0], -scale_ow[1], -scale_ow[0], scale_ow[1], 2);
+
+        // draw Y-Z axis
+        glViewport(0, 0, display_w / 2, display_h / 2);
+        draw_line(-scale_ow[0], -scale_ow[1], scale_ow[0], -scale_ow[1], 1);
+        draw_line(-scale_ow[0], -scale_ow[1], -scale_ow[0], scale_ow[1], 2);
+
+
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());     // draw the GUI data from its buffer
 
         glfwSwapBuffers(window);                                    // swap the double buffer
