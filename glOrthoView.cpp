@@ -102,6 +102,27 @@ glm::mat4 createProjectionMatrix(float aspect) {
 }
 
 
+
+int RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::mat4 V, glm::mat4 P) {
+
+    //bind the material
+
+    glm::mat4 M;                                            // create a model matrix
+
+    // create a model matrix that scales and orients the XY plane
+    //      create a rotation
+    //      create a scale
+    // render
+
+    // create a matrix that scales and orients the XZ plane
+    // render
+
+    // create a matrix that scales and orients the YZ plane
+    // render
+
+}
+
+
 int main(int argc, char** argv)
 {
     // Initialize OpenGL
