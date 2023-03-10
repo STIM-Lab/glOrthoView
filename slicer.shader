@@ -5,29 +5,19 @@
 layout(location = 0) in vec4 aPos;
 layout(location = 2) in vec3 texcoords;
 
-uniform mat4 MVP;
-uniform float slider;
-uniform mat4 view;
-uniform int axis;
-
+uniform mat4 M;
+uniform mat4 VP;
+uniform vec3 S;				// Sx, Sy, Sz = size of the volume
 
 out vec3 vertex_tex;
 
 void main()
 {
-	gl_Position = MVP * aPos;
-	// based on eye, choose the vertex position
-	if (axis == 2) {
-		vertex_tex = vec3(texcoords.x, texcoords.y, slider);
-	}
-	else if (axis == 1)
-	{
-		vertex_tex = vec3(texcoords.x, slider, texcoords.y);
-	}
-	else
-	{
-		vertex_tex = vec3(slider, texcoords.x, texcoords.y);
-	}
+	vec4 w = M * aPos;
+	vec4 t = vec4(w.x / S.x, w.y / S.y, w.z / S.z, 1.0f);
+
+	gl_Position = VP * w;
+	vertex_tex = t.xyz;
 };
 
 
@@ -40,10 +30,9 @@ in vec3 vertex_tex;
 
 out vec4 colors;
 
-uniform sampler3D volumeTexture;
+uniform sampler3D ourText;
 
 void main()
 {
-	colors = texture(volumeTexture, vertex_tex);
-	//colors = vec4(vertex_tex.x, vertex_tex.y, vertex_tex.z, 1.0);
+	colors = texture(ourText, vertex_tex);
 };

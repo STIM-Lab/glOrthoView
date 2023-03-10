@@ -56,16 +56,118 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
     }
 }
 
-static void draw_line(float x1, float y1, float x2, float y2, float z1, float z2, int axis) {
-    glBegin(GL_LINES);
-    if (axis == 0)  glColor3f(0.9f, 0.0f, 0.0f);
-    else if (axis == 1) glColor3f(0.0f, 0.6f, 0.2f);
-    else glColor3f(0.0f, 0.4f, 1.0f);
-    glVertex3f(x1, y1, z1);
-    glVertex3f(x2, y2, z2);
-    //glTranslatef();
-    glEnd();
+static glm::mat4 createModel(int horz_axis, int vert_axis) {
+    ////////////////////////////////    Model Matrix - Planes   /////////////////////////////////////////
+    glm::mat4 model_matrix;
+
+    glm::mat4 rotation;
+    glm::mat4 scale;
+    glm::mat4 translation;
+    float map;
+
+    // X-Y axis
+    if (horz_axis == 0 && vert_axis == 1) {                      
+        rotation = glm::mat4(1.0f);
+        scale = glm::scale(glm::mat4(1.0f), glm::vec3(gui_VolumeSize[0], gui_VolumeSize[1], 1.0f));
+        map = (gui_VolumeSlice[2] * (gui_VolumeSize[2])) - (gui_VolumeSize[2] / 2);
+        translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, map));
+    }
+
+    // X-Z axis
+    else if (horz_axis == 0 && vert_axis == 2) {                  
+        rotation = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0, 0.0, 0.0));
+        scale = glm::scale(glm::mat4(1.0f), glm::vec3(gui_VolumeSize[0], 1.0f, gui_VolumeSize[2]));
+        map = (gui_VolumeSlice[1] * (gui_VolumeSize[1])) - (gui_VolumeSize[1] / 2);
+        translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, map, 0.0f));
+    }
+
+    // Y-Z axis
+    else if (horz_axis == 1 && vert_axis == 2) {                  
+        rotation = glm::rotate(glm::mat4(1.0f), glm::radians(270.0f), glm::vec3(0.0, 1.0, 0.0));
+        rotation = glm::rotate(rotation, glm::radians(270.0f), glm::vec3(0.0, 0.0, 1.0));
+        rotation = glm::rotate(rotation, glm::radians(180.0f), glm::vec3(0.0, 1.0, 0.0));
+        scale = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, gui_VolumeSize[1], gui_VolumeSize[2]));
+        map = (gui_VolumeSlice[0] * (gui_VolumeSize[0])) - (gui_VolumeSize[0] / 2);
+        translation = glm::translate(glm::mat4(1.0f), glm::vec3(map, 0.0f, 0.0f));
+    }
+
+    model_matrix = translation * scale * rotation;
+
+    return model_matrix;
 }
+
+static glm::mat4 createVP(int horz_axis, int vert_axis) {
+
+    glm::mat4 Mview;
+    glm::mat4 Mproj;
+    Mproj = glm::ortho(-0.5 * ortho_world[0], 0.5 * ortho_world[0], -0.5 * ortho_world[1], 0.5 * ortho_world[1], 0.0, 10000.0);
+
+    // X-Y axis
+    if (horz_axis == 0 && vert_axis == 1) {
+        Mview = glm::lookAt(
+            glm::vec3(0.0f, 0.0f, 1.0f),                // eye
+            glm::vec3(0.0f, 0.0f, 0.0f),                // center
+            glm::vec3(0.0f, 1.0f, 0.0f));               // up
+    }
+    
+    // X-Z axis
+    else if (horz_axis == 0 && vert_axis == 2) {
+        Mview = glm::lookAt(
+            glm::vec3(0.0f, 1.0f, 0.0f),                // eye
+            glm::vec3(0.0f, 0.0f, 0.0f),                // center
+            glm::vec3(0.0f, 0.0f, 1.0f));               // up
+    }
+
+    // Y-Z axis
+    else if (horz_axis == 1 && vert_axis == 2) {
+        Mview = glm::lookAt(
+            glm::vec3(1.0f, 0.0f, 0.0f),                // eye
+            glm::vec3(0.0f, 0.0f, 0.0f),                // center
+            glm::vec3(0.0f, 0.0f, 1.0f));               // up
+    }
+
+    return Mproj * Mview;
+}
+
+static glm::mat4 createVp_3D() {
+    glm::mat4 Mproj = glm::ortho(-0.5 * ortho_world[0], 0.5 * ortho_world[0], -0.5 * ortho_world[1], 0.5 * ortho_world[1], 0.0, 10000.0);
+    
+    // initialize the camera for 3D view
+    float vs_max = std::max(gui_VolumeSize[0], std::max(gui_VolumeSize[1], gui_VolumeSize[2]));         // find the maximum size of the volume
+    cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);                                                // eye
+    cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);                                                     // center and up
+
+    glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
+
+    return Mproj * Mview3D;
+}
+
+
+static void reset_plane() {
+    ////////////////////////////////////////    Reset    ////////////////////////////////////////
+    float vs_max = std::max(gui_VolumeSize[0], std::max(gui_VolumeSize[1], gui_VolumeSize[2]));         // find the maximum size of the volume
+    // reset the whole window to initial state if reset button is pressed
+    for (int i = 0; i < 3; i++) {
+        gui_VolumeSize[i] = 1.0f;
+        gui_VolumeSlice[i] = 0.5f;
+        coordinates[i] = 0.0f;
+    }
+    cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);
+    cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    draw_dot = false;
+}
+//static void drawScene(glm::mat4 VP) {
+//    
+//    
+//    glBegin(GL_LINES);
+//    if (axis == 0)  glColor3f(0.9f, 0.0f, 0.0f);
+//    else if (axis == 1) glColor3f(0.0f, 0.6f, 0.2f);
+//    else glColor3f(0.0f, 0.4f, 1.0f);
+//    glVertex3f(x1, y1, z1);
+//    glVertex3f(x2, y2, z2);
+//    //glTranslatef();
+//    glEnd();
+//}
 
 
 int main(int argc, char** argv)
@@ -97,47 +199,14 @@ int main(int argc, char** argv)
     tira::glGeometry sphere = tira::glGeometry::GenerateSphere<float>(20, 20);
     tira::glShader dot("dot.shader");
 
-    // generate 3D axes
-    tira::glGeometry cord_line = tira::glGeometry::GenerateCube<float>();
-    tira::glShader cord_line_shader("3d_cords.shader");
 
-    glm::mat4 scale3d_xy = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.1f, 0.1f));
-    glm::mat4 scale3d_xz = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 1.0f, 0.1f));
-    glm::mat4 scale3d_yz = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 1.0f));
-
-    // initialize the camera for 3D view
-    float vs_max = std::max(gui_VolumeSize[0], std::max(gui_VolumeSize[1], gui_VolumeSize[2]));         // find the maximum size of the volume
-    cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);                                                // eye
-    cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);                                                     // center and up
+    
 
 
 
     // Projection Matrix
     glm::mat4 Mproj;
-
-    // View Matrix
-    glm::mat4 Mview_xy = glm::lookAt(
-        glm::vec3(0.0f, 0.0f, 1.0f),                // eye
-        glm::vec3(0.0f, 0.0f,  0.0f),                // center
-        glm::vec3(0.0f, 1.0f,  0.0f));               // up
-
-    glm::mat4 Mview_xz = glm::lookAt(          
-        glm::vec3(0.0f,  1.0f, 0.0f),                // eye
-        glm::vec3(0.0f,  0.0f, 0.0f),                // center
-        glm::vec3(0.0f,  0.0f, 1.0f));               // up
-    
-    glm::mat4 Mview_yz = glm::lookAt(
-        glm::vec3(1.0f, 0.0f, 0.0f),                // eye
-        glm::vec3( 0.0f, 0.0f, 0.0f),                // center
-        glm::vec3( 0.0f, 0.0f, 1.0f));               // up
-
-    glm::mat4 scale_xy;
-    glm::mat4 scale_xz;
-    glm::mat4 scale_yz;
-
-    glm::mat4 trans_xy;
-    glm::mat4 trans_xz;
-    glm::mat4 trans_yz;
+        
 
     // Main event loop
     while (!glfwWindowShouldClose(window))
@@ -153,46 +222,10 @@ int main(int argc, char** argv)
         glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
         
 
-        ////////////////////////////////    Model Matrix - Planes   /////////////////////////////////////////
-        
-        // Rotation Matrix
-        glm::mat4 rotate_xz = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0, 0.0, 0.0));
-        glm::mat4 rotate_yz = glm::rotate(glm::mat4(1.0f), glm::radians(270.0f), glm::vec3(0.0, 1.0, 0.0));
-        rotate_yz = glm::rotate(rotate_yz, glm::radians(270.0f), glm::vec3(0.0, 0.0, 1.0));
-        rotate_yz = glm::rotate(rotate_yz, glm::radians(180.0f), glm::vec3(0.0, 1.0, 0.0));
+        // reset 3D plane to initial state if reset button is pressed
+        if (reset) reset_plane();
 
-        // Scale Matrix
-        scale_xy = glm::scale(glm::mat4(1.0f), glm::vec3(gui_VolumeSize[0], gui_VolumeSize[1], 1.0f));
-        scale_xz = glm::scale(glm::mat4(1.0f), glm::vec3(gui_VolumeSize[0], 1.0f, gui_VolumeSize[2]));
-        scale_yz = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, gui_VolumeSize[1], gui_VolumeSize[2]));
 
-        // Translation matrix
-        // change the position of plane when the slice slider changes
-        // when size is changed, maps from (0,1) to (-VolumeSize/2 , VolumeSize/2)
-        float map_x = (gui_VolumeSlice[2] * (gui_VolumeSize[2])) - (gui_VolumeSize[2] / 2);
-        float map_y = (gui_VolumeSlice[1] * (gui_VolumeSize[1])) - (gui_VolumeSize[1] / 2);
-        float map_z = (gui_VolumeSlice[0] * (gui_VolumeSize[0])) - (gui_VolumeSize[0] / 2);
-        trans_xy = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, map_x));
-        trans_xz = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, map_y, 0.0f));
-        trans_yz = glm::translate(glm::mat4(1.0f), glm::vec3(map_z, 0.0f, 0.0f));
-
-        
-
-        
-        
-        ////////////////////////////////////////    Reset    ////////////////////////////////////////
-
-        // reset the whole window to initial state if reset button is pressed
-        if (reset) {
-            for (int i = 0; i < 3; i++) {
-                gui_VolumeSize[i] = 1.0f;
-                gui_VolumeSlice[i] = 0.5f;
-                coordinates[i] = 0.0f;
-            }
-            cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);
-            cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-            draw_dot = false;
-        }
 
         //////////////////////////////    Projection Matrix    //////////////////////////////////////
         float aspect = (float)display_w / (float)display_h;
@@ -240,8 +273,8 @@ int main(int argc, char** argv)
             ortho_world[0] = S;
             ortho_world[1] = (1.0 / aspect) * S;
         }
-        Mproj = glm::ortho(-0.5 * ortho_world[0], 0.5 * ortho_world[0], -0.5 * ortho_world[1], 0.5 * ortho_world[1], 0.0, 10000.0);
-        glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
+        
+       
 
         ////////////////////////////////////    Coordinate selection    /////////////////////////////
         
@@ -250,11 +283,11 @@ int main(int argc, char** argv)
             coordinates[0] = ((mouse_x / ortho_pixel[0]) - 1) * ortho_world[0] - (ortho_world[0] / 2.0f);
             coordinates[1] = -((mouse_y / ortho_pixel[1]) * ortho_world[1] - (ortho_world[1] / 2.0f));
             coordinates[2] = gui_VolumeSlice[2] - 0.5f;
-            if (abs(coordinates[0]) <= gui_VolumeSize[0] / 2 && abs(coordinates[1]) <= gui_VolumeSize[1] / 2)
+            /*if (abs(coordinates[0]) <= gui_VolumeSize[0] / 2 && abs(coordinates[1]) <= gui_VolumeSize[1] / 2)
             {
                 trans_xz = glm::translate(trans_xz, glm::vec3(0.0f, coordinates[1], 0.0f));
                 trans_yz = glm::translate(trans_yz, glm::vec3(coordinates[0], 0.0f, 0.0f));
-            }
+            }*/
         }
 
         // if clicked on XZ plane
@@ -263,11 +296,11 @@ int main(int argc, char** argv)
             coordinates[0] = ((mouse_x / ortho_pixel[0]) - 1) * ortho_world[0] - (ortho_world[0] / 2.0f);
             coordinates[1] = gui_VolumeSlice[1] - 0.5f;
             coordinates[2] = -(((mouse_y / ortho_pixel[1]) - 1 ) * ortho_world[1] - (ortho_world[1] / 2.0f));
-            if (abs(coordinates[0]) < 0.5 && abs(coordinates[2]) < 0.5)
+            /*if (abs(coordinates[0]) < 0.5 && abs(coordinates[2]) < 0.5)
             {
                 trans_xy = glm::translate(trans_xy, glm::vec3(0.0f, 0.0f, coordinates[2]));
                 trans_yz = glm::translate(trans_yz, glm::vec3(coordinates[0], 0.0f, 0.0f));
-            }
+            }*/
         }
 
         // if clicked on YZ plane
@@ -275,11 +308,11 @@ int main(int argc, char** argv)
             coordinates[0] = gui_VolumeSlice[0] - 0.5f;
             coordinates[1] = (mouse_x / ortho_pixel[0]) * ortho_world[0] - (ortho_world[0] / 2.0f);
             coordinates[2] = -(((mouse_y / ortho_pixel[1]) - 1) * ortho_world[1] - (ortho_world[1] / 2.0f));
-            if (abs(coordinates[1]) < 0.5 && abs(coordinates[2]) < 0.5)
+            /*if (abs(coordinates[1]) < 0.5 && abs(coordinates[2]) < 0.5)
             {
                 trans_xz = glm::translate(trans_xz, glm::vec3(0.0f, coordinates[1], 0.0f));
                 trans_xy = glm::translate(trans_xy, glm::vec3(0.0f, 0.0f, coordinates[2]));
-            }
+            }*/
         }
 
         // mapping the cursor's position back to the local space position
@@ -287,9 +320,9 @@ int main(int argc, char** argv)
         glm::mat4 scale_sph = glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
 
         // Model matrix: translation + rotation + scaling
-        glm::mat4 model_xy = trans_xy * scale_xy;
-        glm::mat4 model_xz = trans_xz * scale_xz * rotate_xz;
-        glm::mat4 model_yz = trans_yz * scale_yz * rotate_yz;
+        glm::mat4 model_xy = createModel(0, 1);
+        glm::mat4 model_xz = createModel(0, 2);
+        glm::mat4 model_yz = createModel(1, 2);
         
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
@@ -302,32 +335,30 @@ int main(int argc, char** argv)
 
         // Bind the volume material and render all of the viewports
 
-        
+        glm::vec3 volume_size = glm::vec3(gui_VolumeSize[0], gui_VolumeSize[1], gui_VolumeSize[2]);
 
         material.Begin();
         {
 
             // Upper Right (X-Y) Viewport
             glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
-            material.SetUniformMat4f("MVP", Mproj * Mview_xy * model_xy);
-            material.SetUniform1i("axis", 2);
-            material.SetUniform1f("slider", gui_VolumeSlice[2]);
+            material.SetUniformMat4f("M", model_xy);
+            material.SetUniformMat4f("VP", createVP(0, 1));
+            material.SetUniform3f("S", gui_VolumeSize[0], gui_VolumeSize[1], gui_VolumeSize[2]);
             rect.Draw();
 
             // Lower Right (X-Z) Viewport
             glViewport(display_w / 2, 0, display_w / 2, display_h / 2);
-            //material.Begin();
-            material.SetUniformMat4f("MVP", Mproj * Mview_xz * model_xz);
-            material.SetUniform1i("axis", 1);
-            material.SetUniform1f("slider", gui_VolumeSlice[1]);
+            material.SetUniformMat4f("M", model_xz);
+            material.SetUniformMat4f("VP", createVP(0, 2));
+            material.SetUniform3f("S", gui_VolumeSize[0], gui_VolumeSize[1], gui_VolumeSize[2]);
             rect.Draw();
 
             // Lower Left (Y-Z) Viewport
             glViewport(0, 0, display_w / 2, display_h / 2);
-            //material.Begin();
-            material.SetUniformMat4f("MVP", Mproj * Mview_yz * model_yz);
-            material.SetUniform1i("axis", 0);
-            material.SetUniform1f("slider", gui_VolumeSlice[0]);
+            material.SetUniformMat4f("M", model_yz);
+            material.SetUniformMat4f("VP", createVP(1, 2));
+            material.SetUniform3f("S", gui_VolumeSize[0], gui_VolumeSize[1], gui_VolumeSize[2]);
             rect.Draw();
 
             // Render the upper left (3D) view
@@ -335,21 +366,18 @@ int main(int argc, char** argv)
             
             
             // draw the XY plane
-            material.SetUniformMat4f("MVP", Mproj * Mview3D * model_xy);
-            material.SetUniform1i("axis", 2);
-            material.SetUniform1f("slider", gui_VolumeSlice[2]);
+            material.SetUniformMat4f("M", model_xy);
+            material.SetUniformMat4f("VP", createVp_3D());
             rect.Draw();
 
             // draw the XZ plane
-            material.SetUniformMat4f("MVP", Mproj * Mview3D * model_xz);
-            material.SetUniform1i("axis", 1);
-            material.SetUniform1f("slider", gui_VolumeSlice[1]);
+            material.SetUniformMat4f("M", model_xz);
+            material.SetUniformMat4f("VP", createVp_3D());
             rect.Draw();
 
             // draw the YZ plane
-            material.SetUniformMat4f("MVP", Mproj * Mview3D * model_yz);
-            material.SetUniform1i("axis", 0);
-            material.SetUniform1f("slider", gui_VolumeSlice[0]);
+            material.SetUniformMat4f("M", model_yz);
+            material.SetUniformMat4f("VP", createVp_3D());
             rect.Draw();
             
             /*if (draw_dot) {
@@ -360,40 +388,6 @@ int main(int argc, char** argv)
             
         }
         material.End();
-        // define the size of viewed volume on the window
-        float scale_ow[2];
-        scale_ow[0] = 0.999 / ortho_world[0];
-        scale_ow[1] = 0.999 / ortho_world[1];
-
-        //glDisable(GL_DEPTH_TEST);                                                           // disable depth to draw lines over the volume
-        //// draw all axes 3D view
-        //cord_line_shader.Bind();
-        //cord_line_shader.SetUniformMat4f("Scale", scale3d_xy);
-        //cord_line_shader.SetUniform1i("axiss", 0);
-        //cord_line.Draw();
-        //cord_line_shader.SetUniformMat4f("Scale", scale3d_xz);
-        //cord_line_shader.SetUniform1i("axiss", 1);
-        //cord_line.Draw();
-        //cord_line_shader.SetUniformMat4f("Scale", scale3d_yz);
-        //cord_line_shader.SetUniform1i("axiss", 2);
-        //cord_line.Draw();
-
-        // draw X-Y axis 2D view
-        //glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
-        //draw_line(-scale_ow[0], -scale_ow[1], scale_ow[0], -scale_ow[1], 0);
-        //draw_line(-scale_ow[0], -scale_ow[1], -scale_ow[0],  scale_ow[1], 1);
-
-        //// draw X-Z axis 2D view
-        //glViewport(display_w / 2, 0, display_w / 2, display_h / 2);
-        //draw_line(-scale_ow[0], -scale_ow[1], scale_ow[0], -scale_ow[1], 0);
-        //draw_line(-scale_ow[0], -scale_ow[1], -scale_ow[0], scale_ow[1], 2);
-
-        //// draw Y-Z axis 2D view
-        //glViewport(0, 0, display_w / 2, display_h / 2);
-        //draw_line(-scale_ow[0], -scale_ow[1], scale_ow[0], -scale_ow[1], 1);
-        //draw_line(-scale_ow[0], -scale_ow[1], -scale_ow[0], scale_ow[1], 2);
-
-        
         
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());     // draw the GUI data from its buffer
