@@ -52,35 +52,35 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
     }
 }
 
-glm::mat4 createProjectionMatrix(float aspect) {
+glm::mat4 createProjectionMatrix(float aspect, glm::vec3 volume_size) {
 
     glm::mat4 projection_matrix;
 
     // calculate the aspect ratios for each plane
-    float xy_aspect = gui_VolumeSize[0] / gui_VolumeSize[1];
-    float xz_aspect = gui_VolumeSize[0] / gui_VolumeSize[2];
-    float yz_aspect = gui_VolumeSize[1] / gui_VolumeSize[2];
+    float xy_aspect = volume_size.x / volume_size.y;
+    float xz_aspect = volume_size.x / volume_size.z;
+    float yz_aspect = volume_size.y / volume_size.z;
 
     float Sxy, Sxz, Syz;                                                                    // S will be the size of the viewport along its smallest dimension
     if (xy_aspect < aspect) {
-        Sxy = gui_VolumeSize[1];
+        Sxy = volume_size.y;
     }
     else {
-        Sxy = gui_VolumeSize[0];
+        Sxy = volume_size.x;
     }
 
     if (xz_aspect < aspect) {
-        Sxz = gui_VolumeSize[2];
+        Sxz = volume_size.z;
     }
     else {
-        Sxz = gui_VolumeSize[0];
+        Sxz = volume_size.x;
     }
 
     if (yz_aspect < aspect) {
-        Syz = gui_VolumeSize[2];
+        Syz = volume_size.z;
     }
     else {
-        Syz = gui_VolumeSize[1];
+        Syz = volume_size.y;
     }
 
 
@@ -175,29 +175,29 @@ glm::mat4 createScaleMatrix(int horz_axis, int vert_axis, glm::vec3 volume_size)
     return Scale_Matrix;
 }
 
-glm::mat4 createTransMatrix(int horz_axis, int vert_axis) {
+glm::mat4 createTransMatrix(int horz_axis, int vert_axis, glm::vec3 volume_size, glm::vec3 plane_positions) {
     // Translation matrix
     // change the position of plane when the slice slider changes
     // when size is changed, maps from (0,1) to (-VolumeSize/2 , VolumeSize/2)
 
-    glm::mat4 Translation_matrix;
+    glm::mat4 Translation_matrix(1.0f);
     float map;
 
     // X-Y axis
     if (horz_axis == 0 && vert_axis == 1) {
-        map = (gui_VolumeSlice[2] * (gui_VolumeSize[2])) - (gui_VolumeSize[2] / 2);
+        map = (plane_positions.z * (volume_size.z)) - (volume_size.z / 2);
         Translation_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, map));
     }
 
     // X-Z axis
     else if (horz_axis == 0 && vert_axis == 2) {
-        map = (gui_VolumeSlice[1] * (gui_VolumeSize[1])) - (gui_VolumeSize[1] / 2);
+        map = (plane_positions.y * (volume_size.y)) - (volume_size.y / 2);
         Translation_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, map, 0.0f));
     }
 
     // Y-Z axis
     else if (horz_axis == 1 && vert_axis == 2) {
-        map = (gui_VolumeSlice[0] * (gui_VolumeSize[0])) - (gui_VolumeSize[0] / 2);
+        map = (plane_positions.x * (volume_size.x)) - (volume_size.x / 2);
         Translation_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(map, 0.0f, 0.0f));
     }
 
@@ -214,48 +214,57 @@ void resetPlane(float vs_max) {
     cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 }
 
-void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::mat4 V, glm::mat4 P, int horz_axis, int vert_axis,
+void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::mat4 V, glm::mat4 P,
     tira::glGeometry rect, tira::glMaterial material) {
 
 
-    glm::mat4 M;                                        // create a model matrix
-    glm::mat4 rotation;                                 // create a rotation matrix
-    glm::mat4 scale;                                    // create a scale matrix
-    glm::mat4 translation;                              // create a translation matrix
-    
-    // create a model matrix that scales and orients the XY plane
-    rotation = createRotationMatrix(horz_axis, vert_axis);
-    scale = createScaleMatrix(horz_axis, vert_axis, volume_size);
-    translation = createTransMatrix(horz_axis, vert_axis);
-    M = translation * scale * rotation;
-    
+    glm::mat4 M1, M2, M3;                                   // create a model matrix
+    glm::mat4 rotation;                                     // create a rotation matrix
+    glm::mat4 scale;                                        // create a scale matrix
+    glm::mat4 translation;                                  // create a translation matrix
+
+
+
     material.Begin();
     {
-        material.SetUniformMat4f("MVP", P * V * M);
-        
-        if (horz_axis == 0 && vert_axis == 1)
-        {
-            material.SetUniform1f("slider", plane_positions.z);
-            material.SetUniform1i("axis", 2);
-        }
-        else if (horz_axis == 0 && vert_axis == 2)
-        {
-            material.SetUniform1f("slider", plane_positions.y);
-            material.SetUniform1i("axis", 1);
-        }
-        else if (horz_axis == 1 && vert_axis == 2)
-        {
-            material.SetUniform1f("slider", plane_positions.x);
-            material.SetUniform1i("axis", 0);
-        }
-        else
-            std::cout << "Wrong axes selected" << std::endl;
 
+        // create a model matrix that scales and orients the XY plane
+        rotation = createRotationMatrix(0, 1);
+        scale = createScaleMatrix(0, 1, volume_size);
+        translation = createTransMatrix(0, 1, volume_size, plane_positions);
+        M1 = translation * scale * rotation;
+        // render - Upper Right (X-Y) Viewport
+        material.SetUniformMat4f("MVP", P * V * M1);
+        material.SetUniform1i("axis", 2);
+        material.SetUniform1f("slider", gui_VolumeSlice[2]);
         rect.Draw();
+
+
+        // create a model matrix that scales and orients the XZ plane
+        rotation = createRotationMatrix(0, 2);
+        scale = createScaleMatrix(0, 2, volume_size);
+        translation = createTransMatrix(0, 2, volume_size, plane_positions);
+        M2 = translation * scale * rotation;
+        // render - Lower Right (X-Z) Viewport
+        material.SetUniformMat4f("MVP", P * V * M2);
+        material.SetUniform1i("axis", 1);
+        material.SetUniform1f("slider", gui_VolumeSlice[1]);
+        rect.Draw();
+
+
+        // create a model matrix that scales and orients the YZ plane
+        rotation = createRotationMatrix(1, 2);
+        scale = createScaleMatrix(1, 2, volume_size);
+        translation = createTransMatrix(1, 2, volume_size, plane_positions);
+        M3 = translation * scale * rotation;
+        // render - Lower Left (Y-Z) Viewport
+        material.SetUniformMat4f("MVP", P * V * M3);
+        material.SetUniform1i("axis", 0);
+        material.SetUniform1f("slider", gui_VolumeSlice[0]);
+        rect.Draw();
+
     }
     material.End();
-
-    //return 1;
 }
 
 
@@ -310,17 +319,14 @@ int main(int argc, char** argv)
         // Reset
         if (reset) resetPlane(vs_max);
 
-
+        glm::vec3 volume_size = glm::vec3(gui_VolumeSize[0], gui_VolumeSize[1], gui_VolumeSize[2]);
+        glm::vec3 plane_position = glm::vec3(gui_VolumeSlice[0], gui_VolumeSlice[1], gui_VolumeSlice[2]);
 
         // Projection Matrix
         float aspect = (float)display_w / (float)display_h;
-        glm::mat4 Mproj = createProjectionMatrix(aspect);
-        
-        // 3D view matrix
-        glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
+        glm::mat4 Mproj = createProjectionMatrix(aspect, volume_size);    
 
-        glm::vec3 volume_size = glm::vec3(gui_VolumeSize[0], gui_VolumeSize[1], gui_VolumeSize[2]);
-        glm::vec3 plane_position = glm::vec3(gui_VolumeSlice[0], gui_VolumeSlice[1], gui_VolumeSlice[2]);
+        
 
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
@@ -331,27 +337,30 @@ int main(int argc, char** argv)
         /*      Draw Stuff To The Viewport                  */
         /****************************************************/
 
-
-        // Bind the volume material and render all of the viewports
-         
+        glm::mat4 ViewMatrix(1.0f);
         
+        
+        // Bind the volume material and render all of the viewports
+                
         // render - Upper Right (X-Y) Viewport
         glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
-        RenderSlices(volume_size, plane_position, createViewMatrix(0, 1), Mproj, 0, 1, rect, material);
+        ViewMatrix = createViewMatrix(0, 1);
+        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, material);
 
         // render - Lower Right (X-Z) Viewport
         glViewport(display_w / 2, 0, display_w / 2, display_h / 2);
-        RenderSlices(volume_size, plane_position, createViewMatrix(0, 2), Mproj, 0, 2, rect, material);
+        ViewMatrix = createViewMatrix(0, 2);
+        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, material);
 
         // render - Lower Left (Y-Z) Viewport
         glViewport(0, 0, display_w / 2, display_h / 2);
-        RenderSlices(volume_size, plane_position, createViewMatrix(1, 2), Mproj, 1, 2, rect, material);
+        ViewMatrix = createViewMatrix(1, 2);
+        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, material);
 
         // Render the upper left (3D) view
         glViewport(0, display_h / 2, display_w / 2, display_h / 2);
-        RenderSlices(volume_size, plane_position, Mview3D, Mproj, 0, 1, rect, material);
-        RenderSlices(volume_size, plane_position, Mview3D, Mproj, 0, 2, rect, material);
-        RenderSlices(volume_size, plane_position, Mview3D, Mproj, 1, 2, rect, material);
+        glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
+        RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, material);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());     // draw the GUI data from its buffer
         glfwSwapBuffers(window);                                    // swap the double buffer
