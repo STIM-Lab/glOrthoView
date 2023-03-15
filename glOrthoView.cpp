@@ -154,22 +154,22 @@ glm::mat4 createRotationMatrix(int horz_axis, int vert_axis) {
     return Rotation_Matrix;
 }
 
-glm::mat4 createScaleMatrix(int horz_axis, int vert_axis) {
-    glm::mat4 Scale_Matrix;
+glm::mat4 createScaleMatrix(int horz_axis, int vert_axis, glm::vec3 volume_size) {
+    glm::mat4 Scale_Matrix(1.0f);
 
     // X-Y axis
     if (horz_axis == 0 && vert_axis == 1) {
-        Scale_Matrix = glm::scale(glm::mat4(1.0f), glm::vec3(gui_VolumeSize[0], gui_VolumeSize[1], 1.0f));
+        Scale_Matrix = glm::scale(glm::mat4(1.0f), glm::vec3(volume_size.x, volume_size.y, 1.0f));
     }
 
     // X-Z axis
     else if (horz_axis == 0 && vert_axis == 2) {
-        Scale_Matrix = glm::scale(glm::mat4(1.0f), glm::vec3(gui_VolumeSize[0], 1.0f, gui_VolumeSize[2]));
+        Scale_Matrix = glm::scale(glm::mat4(1.0f), glm::vec3(volume_size.x, 1.0f, volume_size.z));
     }
 
     // Y-Z axis
     else if (horz_axis == 1 && vert_axis == 2) {
-        Scale_Matrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, gui_VolumeSize[1], gui_VolumeSize[2]));
+        Scale_Matrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, volume_size.y, volume_size.z));
     }
 
     return Scale_Matrix;
@@ -214,81 +214,44 @@ void resetPlane(float vs_max) {
     cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 }
 
-void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::mat4 V, glm::mat4 P, int display_w, int display_h,
+void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::mat4 V, glm::mat4 P, int horz_axis, int vert_axis,
     tira::glGeometry rect, tira::glMaterial material) {
 
 
-    glm::mat4 M1, M2, M3;                                   // create a model matrix
-    glm::mat4 rotation;                                     // create a rotation matrix
-    glm::mat4 scale;                                        // create a scale matrix
-    glm::mat4 translation;                                  // create a translation matrix
+    glm::mat4 M;                                        // create a model matrix
+    glm::mat4 rotation;                                 // create a rotation matrix
+    glm::mat4 scale;                                    // create a scale matrix
+    glm::mat4 translation;                              // create a translation matrix
     
-    
+    // create a model matrix that scales and orients the XY plane
+    rotation = createRotationMatrix(horz_axis, vert_axis);
+    scale = createScaleMatrix(horz_axis, vert_axis, volume_size);
+    translation = createTransMatrix(horz_axis, vert_axis);
+    M = translation * scale * rotation;
     
     material.Begin();
     {
+        material.SetUniformMat4f("MVP", P * V * M);
+        
+        if (horz_axis == 0 && vert_axis == 1)
+        {
+            material.SetUniform1f("slider", plane_positions.z);
+            material.SetUniform1i("axis", 2);
+        }
+        else if (horz_axis == 0 && vert_axis == 2)
+        {
+            material.SetUniform1f("slider", plane_positions.y);
+            material.SetUniform1i("axis", 1);
+        }
+        else if (horz_axis == 1 && vert_axis == 2)
+        {
+            material.SetUniform1f("slider", plane_positions.x);
+            material.SetUniform1i("axis", 0);
+        }
+        else
+            std::cout << "Wrong axes selected" << std::endl;
 
-        // create a model matrix that scales and orients the XY plane
-        rotation = createRotationMatrix(0, 1);
-        scale = createScaleMatrix(0, 1);
-        translation = createTransMatrix(0, 1);
-        M1 = translation * scale * rotation;
-        // render - Upper Right (X-Y) Viewport
-        glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
-        material.SetUniformMat4f("MVP", P * createViewMatrix(0, 1) * M1);
-        material.SetUniform1i("axis", 2);
-        material.SetUniform1f("slider", gui_VolumeSlice[2]);
         rect.Draw();
-
-
-        // create a model matrix that scales and orients the XZ plane
-        rotation = createRotationMatrix(0, 2);
-        scale = createScaleMatrix(0, 2);
-        translation = createTransMatrix(0, 2);
-        M2 = translation * scale * rotation;
-        // render - Lower Right (X-Z) Viewport
-        glViewport(display_w / 2, 0, display_w / 2, display_h / 2);
-        material.SetUniformMat4f("MVP", P * createViewMatrix(0, 2) * M2);
-        material.SetUniform1i("axis", 1);
-        material.SetUniform1f("slider", gui_VolumeSlice[1]);
-        rect.Draw();
-
-
-        // create a model matrix that scales and orients the YZ plane
-        rotation = createRotationMatrix(1, 2);
-        scale = createScaleMatrix(1, 2);
-        translation = createTransMatrix(1, 2);
-        M3 = translation * scale * rotation;
-        // render - Lower Left (Y-Z) Viewport
-        glViewport(0, 0, display_w / 2, display_h / 2);
-        material.SetUniformMat4f("MVP", P * createViewMatrix(1, 2) * M3);
-        material.SetUniform1i("axis", 0);
-        material.SetUniform1f("slider", gui_VolumeSlice[0]);
-        rect.Draw();
- 
-
-        // Render the upper left (3D) view
-        glViewport(0, display_h / 2, display_w / 2, display_h / 2);
-
-
-        // draw the XY plane
-        material.SetUniformMat4f("MVP", P * V * M1);
-        material.SetUniform1i("axis", 2);
-        material.SetUniform1f("slider", gui_VolumeSlice[2]);
-        rect.Draw();
-
-        // draw the XZ plane
-        material.SetUniformMat4f("MVP", P * V * M2);
-        material.SetUniform1i("axis", 1);
-        material.SetUniform1f("slider", gui_VolumeSlice[1]);
-        rect.Draw();
-
-        // draw the YZ plane
-        material.SetUniformMat4f("MVP", P * V * M3);
-        material.SetUniform1i("axis", 0);
-        material.SetUniform1f("slider", gui_VolumeSlice[0]);
-        rect.Draw();
-
     }
     material.End();
 
@@ -312,15 +275,15 @@ int main(int argc, char** argv)
 
     // Load or create an example volume
     tira::glVolume<unsigned char> vol;
-    vol.load("data/*.bmp");                                                   // uncomment to load from the demo image stack
-    //vol.generate_rgb(256, 256, 256, 8);                                     // generate an RGB grid texture
+    vol.load("data/*.bmp");                                                         // uncomment to load from the demo image stack
+    //vol.generate_rgb(256, 256, 256, 8);                                           // generate an RGB grid texture
 
 
 
     // generate the basic geometry and materials for rendering
-    tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();   // create a rectangle for rendering volume cross-sections
-    tira::glMaterial material("slicer.shader");                             // slicer shader renders a cross-section of the geometry
-    material.SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);          // bind the volume to the material
+    tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();           // create a rectangle for rendering volume cross-sections
+    tira::glMaterial material("slicer.shader");                                     // slicer shader renders a cross-section of the geometry
+    material.SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);                  // bind the volume to the material
 
 
     // initialize the camera for 3D view
@@ -335,11 +298,11 @@ int main(int argc, char** argv)
         // Poll and handle events (inputs, window resize, etc.)
         glfwPollEvents();
 
-        RenderUI();                                                 // render the user interface (the entire thing is rendered every frame)
-        int display_w, display_h;                                   // size of the frame buffer (openGL display)
-        glfwGetFramebufferSize(window, &display_w, &display_h);     // get the frame buffer size
+        RenderUI();                                                         // render the user interface (the entire thing is rendered every frame)
+        int display_w, display_h;                                           // size of the frame buffer (openGL display)
+        glfwGetFramebufferSize(window, &display_w, &display_h);             // get the frame buffer size
 
-        //glViewport(0, 0, display_w, display_h);                     // specifies the area of the window where OpenGL can render
+        //glViewport(0, 0, display_w, display_h);                           // specifies the area of the window where OpenGL can render
         glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
        
 
@@ -356,7 +319,6 @@ int main(int argc, char** argv)
         // 3D view matrix
         glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
 
-
         glm::vec3 volume_size = glm::vec3(gui_VolumeSize[0], gui_VolumeSize[1], gui_VolumeSize[2]);
         glm::vec3 plane_position = glm::vec3(gui_VolumeSlice[0], gui_VolumeSlice[1], gui_VolumeSlice[2]);
 
@@ -371,12 +333,27 @@ int main(int argc, char** argv)
 
 
         // Bind the volume material and render all of the viewports
-        RenderSlices(volume_size, plane_position, Mview3D, Mproj, display_w, display_h, rect, material);
+         
+        
+        // render - Upper Right (X-Y) Viewport
+        glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
+        RenderSlices(volume_size, plane_position, createViewMatrix(0, 1), Mproj, 0, 1, rect, material);
 
+        // render - Lower Right (X-Z) Viewport
+        glViewport(display_w / 2, 0, display_w / 2, display_h / 2);
+        RenderSlices(volume_size, plane_position, createViewMatrix(0, 2), Mproj, 0, 2, rect, material);
 
+        // render - Lower Left (Y-Z) Viewport
+        glViewport(0, 0, display_w / 2, display_h / 2);
+        RenderSlices(volume_size, plane_position, createViewMatrix(1, 2), Mproj, 1, 2, rect, material);
+
+        // Render the upper left (3D) view
+        glViewport(0, display_h / 2, display_w / 2, display_h / 2);
+        RenderSlices(volume_size, plane_position, Mview3D, Mproj, 0, 1, rect, material);
+        RenderSlices(volume_size, plane_position, Mview3D, Mproj, 0, 2, rect, material);
+        RenderSlices(volume_size, plane_position, Mview3D, Mproj, 1, 2, rect, material);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());     // draw the GUI data from its buffer
-
         glfwSwapBuffers(window);                                    // swap the double buffer
     }
 
