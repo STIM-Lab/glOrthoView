@@ -22,6 +22,7 @@ float coordinates[] = { 0.0f, 0.0f, 0.0f };
 
 tira::camera cam;                                       // create a perspective camera for 3D visualization of the volume
 bool right_mouse_pressed = false;                       // flag indicates when the right mouse button is being dragged
+bool left_mouse_pressed = false;                        // flag indicates when the left mouse button is being dragged
 double mouse_x, mouse_y;
 double THETA = 0.02;
 
@@ -35,10 +36,18 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         right_mouse_pressed = false;
 
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        left_mouse_pressed = true;
         glfwGetCursorPos(window, &mouse_x, &mouse_y);                   // save the mouse position when the left button is pressed
     }
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+        left_mouse_pressed = false;
 }
-
+static void crtl_mouse_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS && left_mouse_pressed) {
+        std::cout << "Select Coordinate.\n";
+    }
+}
+        
 static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 {
     if (right_mouse_pressed) {
@@ -102,7 +111,7 @@ glm::mat4 createProjectionMatrix(float aspect, glm::vec3 volume_size) {
 }
 
 glm::mat4 createViewMatrix(int horz_axis, int vert_axis) {
-    glm::mat4 View;
+    glm::mat4 View(1.0f);
 
     // X-Y axis
     if (horz_axis == 0 && vert_axis == 1) {
@@ -132,7 +141,7 @@ glm::mat4 createViewMatrix(int horz_axis, int vert_axis) {
 }
 
 glm::mat4 createRotationMatrix(int horz_axis, int vert_axis) {
-    glm::mat4 Rotation_Matrix;
+    glm::mat4 Rotation_Matrix(1.0f);
 
     // X-Y axis
     if (horz_axis == 0 && vert_axis == 1) {
@@ -214,16 +223,23 @@ void resetPlane(float vs_max) {
     cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 }
 
+
+/// <summary>
+/// Renders all three planes using different viewports 
+/// </summary>
+/// <param name="volume_size"> Volume sizes along each axis including Sx, Sy, Sz </param>
+/// <param name="plane_positions"> Position of each plane inside the volume - ranges (0, Sx) (0, Sy) (0, Sz) </param>
+/// <param name="V"> The view matrix </param>
+/// <param name="P"> The projection matrix </param>
+/// <param name="rect"></param>
+/// <param name="material"></param>
 void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::mat4 V, glm::mat4 P,
     tira::glGeometry rect, tira::glMaterial material) {
-
 
     glm::mat4 M1, M2, M3;                                   // create a model matrix
     glm::mat4 rotation;                                     // create a rotation matrix
     glm::mat4 scale;                                        // create a scale matrix
     glm::mat4 translation;                                  // create a translation matrix
-
-
 
     material.Begin();
     {
@@ -274,6 +290,7 @@ int main(int argc, char** argv)
     window = InitGLFW();                                // create a GLFW window
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
+    glfwSetKeyCallback(window, crtl_mouse_callback);
     InitUI(window, glsl_version);                       // initialize ImGui
 
     GLenum err = glewInit();
@@ -286,7 +303,6 @@ int main(int argc, char** argv)
     tira::glVolume<unsigned char> vol;
     vol.load("data/*.bmp");                                                         // uncomment to load from the demo image stack
     //vol.generate_rgb(256, 256, 256, 8);                                           // generate an RGB grid texture
-
 
 
     // generate the basic geometry and materials for rendering
@@ -315,7 +331,6 @@ int main(int argc, char** argv)
         glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
        
 
-
         // Reset
         if (reset) resetPlane(vs_max);
 
@@ -326,11 +341,9 @@ int main(int argc, char** argv)
         float aspect = (float)display_w / (float)display_h;
         glm::mat4 Mproj = createProjectionMatrix(aspect, volume_size);    
 
-        
-
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
-        glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
+
 
 
         /****************************************************/
@@ -361,6 +374,7 @@ int main(int argc, char** argv)
         glViewport(0, display_h / 2, display_w / 2, display_h / 2);
         glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
         RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, material);
+        
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());     // draw the GUI data from its buffer
         glfwSwapBuffers(window);                                    // swap the double buffer
