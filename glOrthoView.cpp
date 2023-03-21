@@ -61,16 +61,13 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
     }
 }
 
-glm::mat4 createProjectionMatrix(float aspect, glm::vec3 volume_size) {
-
-    glm::mat4 projection_matrix;
-
+glm::vec2 VolSizeMax(float aspect, glm::vec3 volume_size) {
     // calculate the aspect ratios for each plane
     float xy_aspect = volume_size.x / volume_size.y;
     float xz_aspect = volume_size.x / volume_size.z;
     float yz_aspect = volume_size.y / volume_size.z;
 
-    float Sxy, Sxz, Syz;                                                                    // S will be the size of the viewport along its smallest dimension
+    float Sxy, Sxz, Syz;                                // S will be the size of the viewport along its smallest dimension
     if (xy_aspect < aspect) {
         Sxy = volume_size.y;
     }
@@ -92,20 +89,27 @@ glm::mat4 createProjectionMatrix(float aspect, glm::vec3 volume_size) {
         Syz = volume_size.y;
     }
 
+    float S = std::max(Sxy, std::max(Sxz, Syz));       // S is now the size of whichever dimension of the volume is touching the boundary of the viewport
+    glm::vec2 ortho_world(1.0f);
 
-    float S = std::max(Sxy, std::max(Sxz, Syz));                    // S is now the size of whichever dimension of the volume is touching the boundary of the viewport
-
-    float ortho_world[2];                                           // stores the size of the orthographic viewports in world space
     if (aspect > 1) {
-        ortho_world[0] = aspect * S;
-        ortho_world[1] = S;
+        ortho_world.x = aspect * S;
+        ortho_world.y = S;
     }
     else {
-        ortho_world[0] = S;
-        ortho_world[1] = (1.0 / aspect) * S;
+        ortho_world.x = S;
+        ortho_world.y = (1.0 / aspect) * S;
     }
+    return ortho_world;                                       
+}
+
+glm::mat4 createProjectionMatrix(float aspect, glm::vec3 volume_size) {
+
+    glm::mat4 projection_matrix;
+
+    glm::vec2 ortho_world = VolSizeMax(aspect, volume_size);                   // stores the size of the orthographic viewports in world space
     
-    projection_matrix = glm::ortho(-0.5 * ortho_world[0], 0.5 * ortho_world[0], -0.5 * ortho_world[1], 0.5 * ortho_world[1], 0.0, 10000.0);
+    projection_matrix = glm::ortho(-0.5 * ortho_world.x, 0.5 * ortho_world.x, -0.5 * ortho_world.y, 0.5 * ortho_world.y, 0.0, 10000.0);
 
     return projection_matrix;
 }
@@ -213,11 +217,32 @@ glm::mat4 createTransMatrix(int horz_axis, int vert_axis, glm::vec3 volume_size,
     return Translation_matrix;
 }
 
+glm::vec3 coordinate(GLFWwindow* window, int display_w, int display_h, glm::vec3 volume_size, glm::vec3 plane_position) {
+    glm::vec3 coords(1.0f);
+    double coord_x, coord_y;
+    glfwGetCursorPos(window, &coord_x, &coord_y);
+    float aspect = (float)display_w / (float)display_h;
+    glm::vec2 ortho_world = VolSizeMax(aspect, volume_size);
+    int half_disp_w = display_w / 2;
+    int half_disp_h = display_h / 2;
+
+    //std::cout << "coord\t x: " << coord_x << "\t y: " << coord_y << std::endl;
+    
+    if (coord_x > half_disp_w && coord_y < half_disp_h) {
+
+        // maps the cursor's position to (-1, 1) coordinates
+        coords.x = ((coord_x / half_disp_w) - 1) * ortho_world.x - (ortho_world.x / 2.0f);
+        coords.y = -((coord_y / half_disp_h) * half_disp_h - (half_disp_h / 2.0f));
+        coords.z = plane_position.z - 0.5f;
+    }
+    return coords;
+}
+
 void resetPlane(float vs_max) {
     for (int i = 0; i < 3; i++) {
         gui_VolumeSize[i] = 1.0f;
         gui_VolumeSlice[i] = 0.5f;
-        coordinates[i] = 0.0f;
+        //coordinates[i] = 0.0f;
     }
     cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);
     cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
@@ -291,6 +316,7 @@ int main(int argc, char** argv)
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
     glfwSetKeyCallback(window, crtl_mouse_callback);
+    
     InitUI(window, glsl_version);                       // initialize ImGui
 
     GLenum err = glewInit();
@@ -336,11 +362,11 @@ int main(int argc, char** argv)
 
         glm::vec3 volume_size = glm::vec3(gui_VolumeSize[0], gui_VolumeSize[1], gui_VolumeSize[2]);
         glm::vec3 plane_position = glm::vec3(gui_VolumeSlice[0], gui_VolumeSlice[1], gui_VolumeSlice[2]);
-
+        
         // Projection Matrix
         float aspect = (float)display_w / (float)display_h;
         glm::mat4 Mproj = createProjectionMatrix(aspect, volume_size);    
-
+        glm::vec3 coords = coordinate(window, display_w, display_h, volume_size, plane_position);
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
 
@@ -354,7 +380,7 @@ int main(int argc, char** argv)
         
         
         // Bind the volume material and render all of the viewports
-                
+        
         // render - Upper Right (X-Y) Viewport
         glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
         ViewMatrix = createViewMatrix(0, 1);
