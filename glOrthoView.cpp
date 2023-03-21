@@ -217,8 +217,7 @@ glm::mat4 createTransMatrix(int horz_axis, int vert_axis, glm::vec3 volume_size,
     return Translation_matrix;
 }
 
-glm::vec3 coordinates_select(GLFWwindow* window, int display_w, int display_h, glm::vec3 volume_size, glm::vec3 plane_position) {
-    glm::vec3 coords(1.0f);
+void coordinates_select(GLFWwindow* window, int display_w, int display_h, glm::vec3 volume_size, glm::vec3 plane_position) {
     double coord_x, coord_y;
     glfwGetCursorPos(window, &coord_x, &coord_y);
     float aspect = (float)display_w / (float)display_h;
@@ -229,28 +228,26 @@ glm::vec3 coordinates_select(GLFWwindow* window, int display_w, int display_h, g
      
     
     // window x: (800, 1600)   y: (0, 600)
-    if (coord_x > half_disp_w && coord_y < half_disp_h) {
+    if (coord_x > half_disp_w && coord_y < half_disp_h && left_mouse_pressed) {
         // maps the cursor's position to (-1, 1) coordinates
-        coords.x = ((coord_x / half_disp_w) - 1) * ortho_world.x - (ortho_world.x / 2.0f);
-        coords.y = -((coord_y / half_disp_h) * half_disp_h - (half_disp_h / 2.0f));
-        coords.z = plane_position.z - 0.5f;
-        std::cout << "yes" << std::endl;
+        coordinates[0] = ((coord_x / half_disp_w) - 1) * ortho_world.x - (ortho_world.x / 2.0f);
+        coordinates[1] = -((coord_y / half_disp_h) * ortho_world.y - (ortho_world.y / 2.0f));
+        coordinates[2] = plane_position.z - 0.5f;
     }
     // window x: (800, 1600)   y: (600, 1200)
-    if (coord_x > half_disp_w && coord_y > half_disp_h) {                     // maps the cursor's position to (-1, 1) coordinates
-        coords.x = ((mouse_x / half_disp_w) - 1) * half_disp_w - (half_disp_w / 2.0f);
-        coords.y = gui_VolumeSlice[1] - 0.5f;
-        coords.z = -(((mouse_y / half_disp_h) - 1) * half_disp_h - (half_disp_h / 2.0f));
+    if (coord_x > half_disp_w && coord_y > half_disp_h && left_mouse_pressed) {                     // maps the cursor's position to (-1, 1) coordinates
+        coordinates[0] = ((mouse_x / half_disp_w) - 1) * ortho_world.x - (ortho_world.x / 2.0f);
+        coordinates[1] = gui_VolumeSlice[1] - 0.5f;
+        coordinates[2] = -(((mouse_y / half_disp_h) - 1) * ortho_world.y - (ortho_world.y/ 2.0f));
     }
 
     // for YZ plane
     // window x: (800, 1600)   y: (0, 600)
-    if (coord_x < half_disp_w && coord_y > half_disp_h) {                     // maps the cursor's position to (-1, 1) coordinates
-        coords.x = gui_VolumeSlice[0] - 0.5f;
-        coords.y = (mouse_x / half_disp_w) * half_disp_w - (half_disp_w / 2.0f);
-        coords.z = -(((mouse_y / half_disp_h) - 1) * half_disp_h - (half_disp_h / 2.0f));
+    if (coord_x < half_disp_w && coord_y > half_disp_h && left_mouse_pressed) {                     // maps the cursor's position to (-1, 1) coordinates
+        coordinates[0] = gui_VolumeSlice[0] - 0.5f;
+        coordinates[1] = (mouse_x / half_disp_w) * ortho_world.x - (ortho_world.x / 2.0f);
+        coordinates[2] = -(((mouse_y / half_disp_h) - 1) * ortho_world.y - (ortho_world.y / 2.0f));
     }
-    return coords;
 }
 
 void resetPlane(float vs_max) {
@@ -393,7 +390,8 @@ int main(int argc, char** argv)
         /****************************************************/
 
         glm::mat4 ViewMatrix(1.0f);
-        glm::vec3 cord = coordinates_select(window, display_w, display_h, volume_size, plane_position);
+        coordinates_select(window, display_w, display_h, volume_size, plane_position);
+         
         
         // Bind the volume material and render all of the viewports
         
