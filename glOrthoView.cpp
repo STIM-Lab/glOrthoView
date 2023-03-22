@@ -23,6 +23,7 @@ float coordinates[] = { 0.0f, 0.0f, 0.0f };
 tira::camera cam;                                       // create a perspective camera for 3D visualization of the volume
 bool right_mouse_pressed = false;                       // flag indicates when the right mouse button is being dragged
 bool left_mouse_pressed = false;                        // flag indicates when the left mouse button is being dragged
+bool ctrl = false;
 double mouse_x, mouse_y;
 double THETA = 0.02;
 
@@ -37,15 +38,17 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         left_mouse_pressed = true;
-        glfwGetCursorPos(window, &mouse_x, &mouse_y);                   // save the mouse position when the left button is pressed
     }
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
         left_mouse_pressed = false;
 }
 static void crtl_mouse_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS && left_mouse_pressed) {
+    if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS) {
         std::cout << "Select Coordinate.\n";
+        ctrl = true;
     }
+    /*if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_RELEASE)
+        ctrl = false;*/
 }
         
 static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
@@ -217,37 +220,65 @@ glm::mat4 createTransMatrix(int horz_axis, int vert_axis, glm::vec3 volume_size,
     return Translation_matrix;
 }
 
-void coordinates_select(GLFWwindow* window, int display_w, int display_h, glm::vec3 volume_size, glm::vec3 plane_position) {
+void MaxRange(float &num, float MaxRange) {
+    int sign;
+    if (abs(num) > MaxRange) {
+        sign = (num >= 0) ? 1 : -1;
+        num = sign * MaxRange;
+    }
+}
+
+void coordinates_select(GLFWwindow* window, int display_w, int display_h, glm::vec3 volume_size, glm::vec3 &plane_position) {
     double coord_x, coord_y;
     glfwGetCursorPos(window, &coord_x, &coord_y);
     float aspect = (float)display_w / (float)display_h;
     glm::vec2 ortho_world = VolSizeMax(aspect, volume_size);
     int half_disp_w = display_w / 2;
     int half_disp_h = display_h / 2;
-    glfwSetKeyCallback(window, crtl_mouse_callback);
-     
     
+     
+    // XY plane
     // window x: (800, 1600)   y: (0, 600)
     if (coord_x > half_disp_w && coord_y < half_disp_h && left_mouse_pressed) {
-        // maps the cursor's position to (-1, 1) coordinates
         coordinates[0] = ((coord_x / half_disp_w) - 1) * ortho_world.x - (ortho_world.x / 2.0f);
+        MaxRange(coordinates[0], volume_size.x / 2.0f);
+
         coordinates[1] = -((coord_y / half_disp_h) * ortho_world.y - (ortho_world.y / 2.0f));
+        MaxRange(coordinates[1], volume_size.y / 2.0f);
+
         coordinates[2] = plane_position.z - 0.5f;
     }
+    // XZ plane
     // window x: (800, 1600)   y: (600, 1200)
-    if (coord_x > half_disp_w && coord_y > half_disp_h && left_mouse_pressed) {                     // maps the cursor's position to (-1, 1) coordinates
-        coordinates[0] = ((mouse_x / half_disp_w) - 1) * ortho_world.x - (ortho_world.x / 2.0f);
-        coordinates[1] = gui_VolumeSlice[1] - 0.5f;
-        coordinates[2] = -(((mouse_y / half_disp_h) - 1) * ortho_world.y - (ortho_world.y/ 2.0f));
+    if (coord_x > half_disp_w && coord_y > half_disp_h && left_mouse_pressed) {
+        coordinates[0] = ((coord_x / half_disp_w) - 1) * ortho_world.x - (ortho_world.x / 2.0f);
+        MaxRange(coordinates[0], volume_size.x / 2.0f);
+
+        coordinates[1] = plane_position.y - 0.5f;
+
+        coordinates[2] = -(((coord_y / half_disp_h) - 1) * ortho_world.y - (ortho_world.y/ 2.0f));
+        MaxRange(coordinates[2], volume_size.z / 2.0f);
     }
 
-    // for YZ plane
+    // YZ plane
     // window x: (800, 1600)   y: (0, 600)
-    if (coord_x < half_disp_w && coord_y > half_disp_h && left_mouse_pressed) {                     // maps the cursor's position to (-1, 1) coordinates
-        coordinates[0] = gui_VolumeSlice[0] - 0.5f;
-        coordinates[1] = (mouse_x / half_disp_w) * ortho_world.x - (ortho_world.x / 2.0f);
-        coordinates[2] = -(((mouse_y / half_disp_h) - 1) * ortho_world.y - (ortho_world.y / 2.0f));
+    if (coord_x < half_disp_w && coord_y > half_disp_h && left_mouse_pressed) {
+        coordinates[0] = plane_position.x - 0.5f;
+
+        coordinates[1] = (coord_x / half_disp_w) * ortho_world.x - (ortho_world.x / 2.0f);
+        MaxRange(coordinates[1], volume_size.y / 2.0f);
+
+        coordinates[2] = -(((coord_y / half_disp_h) - 1) * ortho_world.y - (ortho_world.y / 2.0f));
+        MaxRange(coordinates[2], volume_size.z / 2.0f);
     }
+
+    // maps back to (0,1)
+    if (ctrl) {
+        plane_position.x = coordinates[0] / volume_size.x + 0.5f;
+        plane_position.y = coordinates[1] / volume_size.y + 0.5f;
+        plane_position.z = coordinates[2] / volume_size.z + 0.5f;
+    }
+    
 }
 
 void resetPlane(float vs_max) {
@@ -289,7 +320,7 @@ void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::
         // render - Upper Right (X-Y) Viewport
         material.SetUniformMat4f("MVP", P * V * M1);
         material.SetUniform1i("axis", 2);
-        material.SetUniform1f("slider", gui_VolumeSlice[2]);
+        material.SetUniform1f("slider", plane_positions.z);
         rect.Draw();
 
 
@@ -301,7 +332,7 @@ void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::
         // render - Lower Right (X-Z) Viewport
         material.SetUniformMat4f("MVP", P * V * M2);
         material.SetUniform1i("axis", 1);
-        material.SetUniform1f("slider", gui_VolumeSlice[1]);
+        material.SetUniform1f("slider", plane_positions.y);
         rect.Draw();
 
 
@@ -313,7 +344,7 @@ void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::
         // render - Lower Left (Y-Z) Viewport
         material.SetUniformMat4f("MVP", P * V * M3);
         material.SetUniform1i("axis", 0);
-        material.SetUniform1f("slider", gui_VolumeSlice[0]);
+        material.SetUniform1f("slider", plane_positions.x);
         rect.Draw();
 
     }
@@ -325,6 +356,7 @@ int main(int argc, char** argv)
 {
     // Initialize OpenGL
     window = InitGLFW();                                // create a GLFW window
+    glfwSetKeyCallback(window, crtl_mouse_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
     
@@ -354,7 +386,7 @@ int main(int argc, char** argv)
     cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);                                                // eye
     cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);                                                     // center and up
 
-
+    int cnt;
     // Main event loop
     while (!glfwWindowShouldClose(window))
     {
@@ -377,8 +409,8 @@ int main(int argc, char** argv)
         
         // Projection Matrix
         float aspect = (float)display_w / (float)display_h;
-        glm::mat4 Mproj = createProjectionMatrix(aspect, volume_size);    
-
+        glm::mat4 Mproj = createProjectionMatrix(aspect, volume_size);
+        
 
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
