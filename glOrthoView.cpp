@@ -229,6 +229,7 @@ void MaxRange(float &num, float MaxRange) {
 }
 
 void coordinates_select(GLFWwindow* window, int display_w, int display_h, glm::vec3 volume_size, glm::vec3 &plane_position) {
+    
     double coord_x, coord_y;
     glfwGetCursorPos(window, &coord_x, &coord_y);
     float aspect = (float)display_w / (float)display_h;
@@ -371,8 +372,8 @@ int main(int argc, char** argv)
 
     // Load or create an example volume
     tira::glVolume<unsigned char> vol;
-    vol.load("data/*.bmp");                                                         // uncomment to load from the demo image stack
-    //vol.generate_rgb(256, 256, 256, 8);                                           // generate an RGB grid texture
+    //vol.load("data/*.bmp");                                                         // uncomment to load from the demo image stack
+    vol.generate_rgb(256, 256, 256);                                           // generate an RGB grid texture
 
 
     // generate the basic geometry and materials for rendering

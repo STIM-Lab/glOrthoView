@@ -82,6 +82,8 @@ void RenderUI() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    
+
     // Display a Demo window showing what ImGui is capable of
     // See https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html for code details
     //ImGui::ShowDemoWindow();
@@ -97,6 +99,11 @@ void RenderUI() {
         static int counter = 0;
 
         ImGui::Begin("Volume Slicer");
+
+        ///HELIA - updates here
+        if (ImGui::IsWindowFocused()) {
+            std::cout << "Window Is Focused." << std::endl;
+        }
 
         if (ImGui::Button("Open File Dialog"))
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp,.pdf", ".");
