@@ -9,7 +9,8 @@ float ui_scale = 1.5f;                                  // scale value for the U
 bool reset = false;
 extern float gui_VolumeSize[];
 extern float gui_VolumeSlice[];
-extern float coordinates[];
+extern float coords[];
+extern bool window_focused;
 
 
 void glfw_error_callback(int error, const char* description)
@@ -101,10 +102,8 @@ void RenderUI() {
         ImGui::Begin("Volume Slicer");
 
         ///HELIA - updates here
-        if (ImGui::IsWindowFocused()) {
-            std::cout << "Window Is Focused." << std::endl;
-        }
-
+        window_focused = (ImGui::IsWindowHovered() || ImGui::IsWindowFocused()) ? true : false;
+        
         if (ImGui::Button("Open File Dialog"))
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp,.pdf", ".");
 
@@ -149,17 +148,17 @@ void RenderUI() {
             ImGui::TableNextColumn();
             ImGui::Text("X");
             ImGui::TableNextColumn();
-            ImGui::Text("%f", coordinates[0]);
+            ImGui::Text("%f", coords[0]);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("Y");
             ImGui::TableNextColumn();
-            ImGui::Text("%f", coordinates[1]);
+            ImGui::Text("%f", coords[1]);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("Z");
             ImGui::TableNextColumn();
-            ImGui::Text("%f", coordinates[2]);
+            ImGui::Text("%f", coords[2]);
             ImGui::EndTable();
         }
 
