@@ -47,6 +47,7 @@ add_executable(glOrthoView
 				glOrthoView.cpp
 				gui.cpp
 				gui.h
+				lib/ImGuiFileDialog/ImGuiFileDialog.cpp
 )
 
 target_link_libraries(glOrthoView
