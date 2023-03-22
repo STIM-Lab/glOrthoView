@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+
 float ui_scale = 1.5f;                                  // scale value for the UI and UI text
 //float a_slider_value;                                   // UI variable used to store the value of a floating point slider widget
 
@@ -9,6 +10,7 @@ bool reset = false;
 extern float gui_VolumeSize[];
 extern float gui_VolumeSlice[];
 extern float coordinates[];
+
 
 void glfw_error_callback(int error, const char* description)
 {
@@ -95,7 +97,25 @@ void RenderUI() {
         static int counter = 0;
 
         ImGui::Begin("Volume Slicer");
-        
+
+        if (ImGui::Button("Open File Dialog"))
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp,.pdf", ".");
+
+        // display
+        if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+        {
+            // action if OK
+            if (ImGuiFileDialog::Instance()->IsOk())
+            {
+                std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+                std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+                // action
+            }
+
+            // close
+            ImGuiFileDialog::Instance()->Close();
+        }
+
         // Adjusting the size of the volume along each axis
         ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(230, 0, 0, 255));
         ImGui::Text("\t\tX\t\t");
@@ -111,6 +131,7 @@ void RenderUI() {
         ImGui::Spacing();
         reset = ImGui::Button("Reset", ImVec2(70, 35));
         ImGui::Spacing();
+        //press_button = ImGui::Button("Click Here", ImVec2(110, 35));
 
         if (ImGui::BeginTable("Coordinates", 2, ImGuiTableFlags_Resizable + ImGuiTableFlags_Borders, ImVec2(0.0f, 5.0f), 2.0f))
         {
@@ -140,9 +161,9 @@ void RenderUI() {
         ImGui::End();
     }
 
-    
 
-    
+
+
 
 
 
