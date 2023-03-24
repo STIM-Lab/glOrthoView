@@ -11,6 +11,7 @@
 #include <string>
 #include <stdio.h>
 #include "gui.h"
+#include"Cylinder.h"
 
 
 GLFWwindow* window;                                     // pointer to the GLFW window that will be created (used in GLFW calls to request properties)
@@ -123,7 +124,7 @@ glm::mat4 createViewMatrix(int horz_axis, int vert_axis) {
     // X-Z axis
     else if (horz_axis == 0 && vert_axis == 2) {
         View = glm::lookAt(
-            glm::vec3(0.0f, 1.0f, 0.0f),                // eye
+            glm::vec3(0.0f, -1.0f, 0.0f),                // eye
             glm::vec3(0.0f, 0.0f, 0.0f),                // center
             glm::vec3(0.0f, 0.0f, 1.0f));               // up
     }
@@ -304,6 +305,45 @@ void resetPlane(float vs_max) {
     cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 }
 
+void inline draw_axes(tira::glGeometry cylinder, tira::glShader shader, glm::mat4 projection, glm::mat4 view, glm::vec3 volume_size, glm::vec3 plane_positions) {
+    glm::mat4 rotation(1.0f);
+    glm::mat4 translation(1.0f);
+    glm::mat4 scale(1.0f);
+    glm::mat4 M(1.0f);
+    shader.Bind();
+
+    // X axis
+    rotation = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0, 1.0, 0.0));
+    scale = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.05f, 0.05f)) * createScaleMatrix(0, 1, volume_size);
+    translation = createTransMatrix(0, 1, volume_size, plane_positions) * createTransMatrix(0, 2, volume_size, plane_positions);
+    translation *= glm::translate(glm::mat4(1.0f), glm::vec3(-volume_size.x / 2.0f, 0.0f, 0.0f));
+    M = translation * scale * rotation;
+    shader.SetUniformMat4f("MVP", projection * view * M);
+    shader.SetUniform1i("axis", 0);
+    cylinder.Draw();
+
+    // Y axis
+    rotation = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0, 0.0, 0.0));
+    scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.05f, 1.0f, 0.05f)) * createScaleMatrix(1, 2, volume_size);
+    translation = createTransMatrix(1, 2, volume_size, plane_positions) * createTransMatrix(0, 1, volume_size, plane_positions);
+    translation *= glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -volume_size.y / 2, 0.0f));
+    M = translation * scale * rotation;
+    shader.SetUniformMat4f("MVP", projection * view * M);
+    shader.SetUniform1i("axis", 1);
+    cylinder.Draw();
+
+    // Z axis
+    rotation = glm::mat4(1.0f);
+    scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.05f, 0.05f, 1.0f)) * createScaleMatrix(1, 2, volume_size);
+    translation = createTransMatrix(1, 2, volume_size, plane_positions) * createTransMatrix(0, 2, volume_size, plane_positions);
+    translation *= glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -volume_size.z / 2.0f));
+    M = translation * scale * rotation;
+    shader.SetUniformMat4f("MVP", projection * view * M);
+    shader.SetUniform1i("axis", 2);
+    cylinder.Draw();
+}
+
+
 /// <summary>
 /// Renders all three planes using different viewports 
 /// </summary>
@@ -314,7 +354,7 @@ void resetPlane(float vs_max) {
 /// <param name="rect"></param>
 /// <param name="material"></param>
 void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::mat4 V, glm::mat4 P,
-    tira::glGeometry rect, tira::glMaterial material) {
+    tira::glGeometry rect, tira::glMaterial material, tira::glGeometry cylinder, tira::glShader shader) {
 
     glm::mat4 M1, M2, M3;                                   // create a model matrix
     glm::mat4 rotation;                                     // create a rotation matrix
@@ -323,7 +363,6 @@ void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::
 
     material.Begin();
     {
-
         // create a model matrix that scales and orients the XY plane
         rotation = createRotationMatrix(0, 1);
         scale = createScaleMatrix(0, 1, volume_size);
@@ -334,8 +373,8 @@ void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::
         material.SetUniform1i("axis", 2);
         material.SetUniform1f("slider", plane_positions.z);
         rect.Draw();
-
-
+        
+        
         // create a model matrix that scales and orients the XZ plane
         rotation = createRotationMatrix(0, 2);
         scale = createScaleMatrix(0, 2, volume_size);
@@ -347,7 +386,6 @@ void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::
         material.SetUniform1f("slider", plane_positions.y);
         rect.Draw();
 
-
         // create a model matrix that scales and orients the YZ plane
         rotation = createRotationMatrix(1, 2);
         scale = createScaleMatrix(1, 2, volume_size);
@@ -358,9 +396,10 @@ void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::
         material.SetUniform1i("axis", 0);
         material.SetUniform1f("slider", plane_positions.x);
         rect.Draw();
-
+        
     }
     material.End();
+    draw_axes(cylinder, shader, P, V, volume_size, plane_positions);
 }
 
 
@@ -391,6 +430,13 @@ int main(int argc, char** argv)
     tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();           // create a rectangle for rendering volume cross-sections
     tira::glMaterial material("slicer.shader");                                     // slicer shader renders a cross-section of the geometry
     material.SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);                  // bind the volume to the material
+
+    /////////////////////////////////////////////////////////////////
+    // ////////////////////////////////////////////////////////// //
+   // Create a new Cylinder object
+    tira::glGeometry cylinder = tira::glGeometry::GenerateCylinder<float>(10, 20);
+    tira::glShader cylinder_shader("dot.shader");
+
 
 
     // initialize the camera for 3D view
@@ -451,23 +497,27 @@ int main(int argc, char** argv)
         // render - Upper Right (X-Y) Viewport
         glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
         ViewMatrix = createViewMatrix(0, 1);
-        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, material);
+        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, material, cylinder, cylinder_shader);
 
         // render - Lower Right (X-Z) Viewport
         glViewport(display_w / 2, 0, display_w / 2, display_h / 2);
         ViewMatrix = createViewMatrix(0, 2);
-        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, material);
+        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, material, cylinder, cylinder_shader);
 
         // render - Lower Left (Y-Z) Viewport
         glViewport(0, 0, display_w / 2, display_h / 2);
         ViewMatrix = createViewMatrix(1, 2);
-        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, material);
+        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, material, cylinder, cylinder_shader);
 
         // Render the upper left (3D) view
         glViewport(0, display_h / 2, display_w / 2, display_h / 2);
         glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
-        RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, material);
+        RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, material, cylinder, cylinder_shader);
         
+        
+        
+
+
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());     // draw the GUI data from its buffer
         glfwSwapBuffers(window);                                    // swap the double buffer

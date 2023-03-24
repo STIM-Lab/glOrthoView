@@ -47,6 +47,7 @@ add_executable(glOrthoView
 				glOrthoView.cpp
 				gui.cpp
 				gui.h
+				Cylinder.h
 				lib/ImGuiFileDialog/ImGuiFileDialog.cpp
 )
 
