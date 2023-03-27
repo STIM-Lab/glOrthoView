@@ -7,6 +7,9 @@
 #include "lib/ImGuiFileDialog/ImGuiFileDialog.h"
 
 extern bool reset;
+extern bool num_file;
+extern bool rgb_file;
+
 
 void glfw_error_callback(int error, const char* description);
 

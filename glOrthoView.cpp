@@ -430,6 +430,9 @@ int main(int argc, char** argv)
     tira::glMaterial material("slicer.shader");                                     // slicer shader renders a cross-section of the geometry
     material.SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);                  // bind the volume to the material
 
+    tira::glVolume<unsigned char> vol1;
+    tira::glVolume<unsigned char> vol2;
+
     /////////////////////////////////////////////////////////////////
     // ////////////////////////////////////////////////////////// //
    // Create a new Cylinder object
@@ -474,7 +477,25 @@ int main(int argc, char** argv)
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
 
+        if (num_file)
+        {
+            std::cout << "Loading npy" << std::endl;
+            vol1.load_npy("volume.npy");
+            //tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();
+            //material.Unbind();
+            material.SetTexture("volumeTexture", vol1, GL_RGB, GL_NEAREST);
+            //num_file = true;
+        }
 
+        if (rgb_file)
+        {
+            std::cout << "Loading rgb" << std::endl;
+            vol2.generate_rgb(156, 206, 176, 4);
+            //tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();
+            //material.Unbind();
+            material.SetTexture("volumeTexture", vol2, GL_RGB, GL_NEAREST);
+            //num_file = true;
+        }
 
         /****************************************************/
         /*      Draw Stuff To The Viewport                  */

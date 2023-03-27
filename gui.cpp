@@ -7,6 +7,8 @@ float ui_scale = 1.5f;                                  // scale value for the U
 //float a_slider_value;                                   // UI variable used to store the value of a floating point slider widget
 
 bool reset = false;
+bool num_file = false;
+bool rgb_file = false;
 extern float gui_VolumeSize[];
 extern float gui_VolumeSlice[];
 extern float coords[];
@@ -105,7 +107,7 @@ void RenderUI() {
         window_focused = (ImGui::IsWindowHovered() || ImGui::IsWindowFocused()) ? true : false;
         
         if (ImGui::Button("Open File Dialog"))
-            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp,.pdf,.bmp", ".");
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp,.pdf,.bmp,.npy", ".");
 
         // display
         if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
@@ -116,6 +118,7 @@ void RenderUI() {
                 std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
                 // action
+
             }
 
             // close
@@ -138,6 +141,9 @@ void RenderUI() {
         reset = ImGui::Button("Reset", ImVec2(70, 35));
         ImGui::Spacing();
         //press_button = ImGui::Button("Click Here", ImVec2(110, 35));
+        rgb_file = ImGui::Button("Load volume RGB", ImVec2(200, 35));
+        num_file = ImGui::Button("Load numpy", ImVec2(150, 35));
+
 
         if (ImGui::BeginTable("Coordinates", 2, ImGuiTableFlags_Resizable + ImGuiTableFlags_Borders, ImVec2(0.0f, 5.0f), 2.0f))
         {
