@@ -39,14 +39,15 @@ configure_file(Roboto-Medium.ttf
 file(COPY data DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 configure_file(slicer.shader 
 				slicer.shader COPYONLY)
-configure_file(dot.shader 
-				dot.shader COPYONLY)
+configure_file(axes.shader 
+				axes.shader COPYONLY)
 
 #create an executable
 add_executable(glOrthoView
 				glOrthoView.cpp
 				gui.cpp
 				gui.h
+				Cylinder.h
 				lib/ImGuiFileDialog/ImGuiFileDialog.cpp
 )
 

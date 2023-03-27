@@ -46,17 +46,4 @@ void main()
 {
 	float lineWidthHalf = 0.002f;
 	colors = texture(volumeTexture, vertex_tex);
-
-	//// X axis
-	//if (abs(vertex_tex.y - 0.5f) < lineWidthHalf && abs(vertex_tex.z - 0.5f) < lineWidthHalf && vertex_tex.x > 0.5f) {
-	//	colors = vec4(8.0f, 0.0f, 0.0f, 1.0f);
-	//}
-	//// Y axis
-	//if (abs(vertex_tex.x - 0.5f) < lineWidthHalf && abs(vertex_tex.z - 0.5f) < lineWidthHalf && vertex_tex.y > 0.5f) {
-	//	colors = vec4(0.0f, 0.6f, 0.0f, 1.0f);
-	//}
-	//// Z axis
-	//if (abs(vertex_tex.x - 0.5f) < lineWidthHalf && abs(vertex_tex.y - 0.5f) < lineWidthHalf && vertex_tex.z > 0.5f) {
-	//	colors = vec4(0.0f, 0.2f, 0.6f, 1.0f);
-	//}
 };
