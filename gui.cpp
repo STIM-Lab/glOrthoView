@@ -99,7 +99,7 @@ void RenderUI() {
         ImGui::Begin("Volume Slicer");
 
         if (ImGui::Button("Open File Dialog"))
-            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp,.pdf", ".");
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp,.pdf,.bmp", ".");
 
         // display
         if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
