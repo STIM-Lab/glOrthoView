@@ -11,7 +11,6 @@
 #include <string>
 #include <stdio.h>
 #include "gui.h"
-#include"Cylinder.h"
 
 
 GLFWwindow* window;                                     // pointer to the GLFW window that will be created (used in GLFW calls to request properties)
@@ -435,7 +434,7 @@ int main(int argc, char** argv)
     // ////////////////////////////////////////////////////////// //
    // Create a new Cylinder object
     tira::glGeometry cylinder = tira::glGeometry::GenerateCylinder<float>(10, 20);
-    tira::glShader cylinder_shader("dot.shader");
+    tira::glShader cylinder_shader("axes.shader");
 
 
 
