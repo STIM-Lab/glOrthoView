@@ -490,7 +490,7 @@ int main(int argc, char** argv)
         if (rgb_file)
         {
             std::cout << "Loading rgb" << std::endl;
-            vol2.generate_rgb(156, 206, 176, 4);
+            vol2.generate_rgb(156, 206, 176, 8);
             //tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();
             //material.Unbind();
             material.SetTexture("volumeTexture", vol2, GL_RGB, GL_NEAREST);
