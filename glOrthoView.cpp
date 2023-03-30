@@ -421,8 +421,8 @@ int main(int argc, char** argv)
 
     // Load or create an example volume
     tira::glVolume<unsigned char> vol;
-    vol.load("data/*.bmp");                                                    // uncomment to load from the demo image stack
-    //vol.generate_rgb(256, 256, 256);                                           // generate an RGB grid texture
+    //vol.load("data/*.bmp");                                                    // uncomment to load from the demo image stack
+    vol.generate_rgb(256, 256, 256);                                           // generate an RGB grid texture
 
 
     // generate the basic geometry and materials for rendering
@@ -477,16 +477,16 @@ int main(int argc, char** argv)
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
 
-        if (num_file)
+        if (ImGuiFileDialog::Instance()->IsOk())
         {
-            std::cout << "Loading npy" << std::endl;
+            //std::cout << "Loading npy" << std::endl;
             vol1.load_npy("volume.npy");
             //tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();
             //material.Unbind();
             material.SetTexture("volumeTexture", vol1, GL_RGB, GL_NEAREST);
             //num_file = true;
         }
-
+        
         if (rgb_file)
         {
             std::cout << "Loading rgb" << std::endl;
@@ -543,7 +543,7 @@ int main(int argc, char** argv)
         glfwSwapBuffers(window);                                    // swap the double buffer
     }
 
-
+    ImGuiFileDialog::Instance()->Close();
     DestroyUI();                                                    // Clear the ImGui user interface
 
     glfwDestroyWindow(window);                                      // Destroy the GLFW rendering window
