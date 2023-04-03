@@ -481,28 +481,6 @@ int main(int argc, char** argv)
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
 
-<<<<<<< Updated upstream
-        if (ImGuiFileDialog::Instance()->IsOk())
-        {
-            //std::cout << "Loading npy" << std::endl;
-            vol1.load_npy("volume.npy");
-            //tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();
-            //material.Unbind();
-            material.SetTexture("volumeTexture", vol1, GL_RGB, GL_NEAREST);
-            //num_file = true;
-        }
-        
-        if (rgb_file)
-        {
-            std::cout << "Loading rgb" << std::endl;
-            vol2.generate_rgb(156, 206, 176, 8);
-            //tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();
-            //material.Unbind();
-            material.SetTexture("volumeTexture", vol2, GL_RGB, GL_NEAREST);
-            //num_file = true;
-        }
-=======
->>>>>>> Stashed changes
 
         /****************************************************/
         /*      Draw Stuff To The Viewport                  */
@@ -541,28 +519,8 @@ int main(int argc, char** argv)
         glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
         RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, material, cylinder, cylinder_shader);
 
-        /*
-        if (num_file)
-        {
-            std::cout << "Loading npy" << std::endl;
-            vol1.load_npy("volume.npy");
-            //tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();
-            //material.Unbind();
-            material.SetTexture("volumeTexture", vol1, GL_RGB, GL_NEAREST);
-            //num_file = true;
-        }
-
-        if (rgb_file)
-        {
-            std::cout << "Loading rgb" << std::endl;
-            vol2.generate_rgb(156, 206, 176, 8);
-            //tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();
-            //material.Unbind();
-            material.SetTexture("volumeTexture", vol2, GL_RGB, GL_NEAREST);
-            //num_file = true;
-        }
-        */
-
+        
+        //load numpy file from ImGui File Dialog
         if (ImGuiFileDialog::Instance()->IsOk() && !fileLoaded)
         {
             std::cout << "Loading npy" << std::endl;
@@ -574,17 +532,12 @@ int main(int argc, char** argv)
         }
 
 
-
-
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());     // draw the GUI data from its buffer
         glfwSwapBuffers(window);                                    // swap the double buffer
     }
 
     ImGuiFileDialog::Instance()->Close();
-<<<<<<< Updated upstream
-=======
 
->>>>>>> Stashed changes
     DestroyUI();                                                    // Clear the ImGui user interface
 
     glfwDestroyWindow(window);                                      // Destroy the GLFW rendering window
