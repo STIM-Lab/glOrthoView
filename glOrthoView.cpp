@@ -24,6 +24,9 @@ tira::camera cam;                                       // create a perspective 
 bool right_mouse_pressed = false;                       // flag indicates when the right mouse button is being dragged
 bool left_mouse_pressed = false;                        // flag indicates when the left mouse button is being dragged
 
+
+
+
 double mouse_x, mouse_y;
 double THETA = 0.02;
 
@@ -412,7 +415,7 @@ int main(int argc, char** argv)
 
     InitUI(window, glsl_version);                       // initialize ImGui
 
-    
+
     GLenum err = glewInit();
     if (GLEW_OK != err) {
         /* Problem: glewInit failed, something is seriously wrong. */
@@ -447,6 +450,7 @@ int main(int argc, char** argv)
     cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);                                                     // center and up
 
     int cnt;
+    bool fileLoaded = false;
     // Main event loop
     while (!glfwWindowShouldClose(window))
     {
@@ -459,7 +463,7 @@ int main(int argc, char** argv)
 
         //glViewport(0, 0, display_w, display_h);                           // specifies the area of the window where OpenGL can render
         glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
-       
+
 
         // Reset
         if (reset) resetPlane(vs_max);
@@ -467,16 +471,17 @@ int main(int argc, char** argv)
         glm::vec3 volume_size = glm::vec3(gui_VolumeSize[0], gui_VolumeSize[1], gui_VolumeSize[2]);
         glm::vec3 plane_position = glm::vec3(gui_VolumeSlice[0], gui_VolumeSlice[1], gui_VolumeSlice[2]);
         glm::vec3 coordinates = glm::vec3(coords[0], coords[1], coords[2]);
-        
+
 
         // Projection Matrix
         float aspect = (float)display_w / (float)display_h;
         glm::mat4 Mproj = createProjectionMatrix(aspect, volume_size);
-        
+
 
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
 
+<<<<<<< Updated upstream
         if (ImGuiFileDialog::Instance()->IsOk())
         {
             //std::cout << "Loading npy" << std::endl;
@@ -496,6 +501,8 @@ int main(int argc, char** argv)
             material.SetTexture("volumeTexture", vol2, GL_RGB, GL_NEAREST);
             //num_file = true;
         }
+=======
+>>>>>>> Stashed changes
 
         /****************************************************/
         /*      Draw Stuff To The Viewport                  */
@@ -504,7 +511,7 @@ int main(int argc, char** argv)
         glm::mat4 ViewMatrix(1.0f);
 
         // coordination selection is not applied when user clicks on the imgui window
-        if (!window_focused)                                      
+        if (!window_focused)
             coordinates_select(window, coordinates, display_w, display_h, volume_size, plane_position);
 
 
@@ -513,7 +520,7 @@ int main(int argc, char** argv)
 
 
         // Bind the volume material and render all of the viewports
-        
+
         // render - Upper Right (X-Y) Viewport
         glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
         ViewMatrix = createViewMatrix(0, 1);
@@ -533,9 +540,39 @@ int main(int argc, char** argv)
         glViewport(0, display_h / 2, display_w / 2, display_h / 2);
         glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
         RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, material, cylinder, cylinder_shader);
-        
-        
-        
+
+        /*
+        if (num_file)
+        {
+            std::cout << "Loading npy" << std::endl;
+            vol1.load_npy("volume.npy");
+            //tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();
+            //material.Unbind();
+            material.SetTexture("volumeTexture", vol1, GL_RGB, GL_NEAREST);
+            //num_file = true;
+        }
+
+        if (rgb_file)
+        {
+            std::cout << "Loading rgb" << std::endl;
+            vol2.generate_rgb(156, 206, 176, 8);
+            //tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();
+            //material.Unbind();
+            material.SetTexture("volumeTexture", vol2, GL_RGB, GL_NEAREST);
+            //num_file = true;
+        }
+        */
+
+        if (ImGuiFileDialog::Instance()->IsOk() && !fileLoaded)
+        {
+            std::cout << "Loading npy" << std::endl;
+            vol1.load_npy("volume.npy");
+            material.SetTexture("volumeTexture", vol1, GL_RGB, GL_NEAREST);
+
+            fileLoaded = true;
+            ImGuiFileDialog::Instance()->Close();
+        }
+
 
 
 
@@ -544,10 +581,15 @@ int main(int argc, char** argv)
     }
 
     ImGuiFileDialog::Instance()->Close();
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
     DestroyUI();                                                    // Clear the ImGui user interface
 
     glfwDestroyWindow(window);                                      // Destroy the GLFW rendering window
     glfwTerminate();                                                // Terminate GLFW
 
     return 0;
+
 }

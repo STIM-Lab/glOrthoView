@@ -14,8 +14,6 @@ float ui_scale = 1.5f;                                  // scale value for the U
 //float a_slider_value;                                   // UI variable used to store the value of a floating point slider widget
 
 bool reset = false;
-bool num_file = false;
-bool rgb_file = false;
 extern float gui_VolumeSize[];
 extern float gui_VolumeSlice[];
 extern float coords[];
@@ -113,11 +111,19 @@ void RenderUI() {
 
         ///HELIA - updates here
         window_focused = (ImGui::IsWindowHovered() || ImGui::IsWindowFocused()) ? true : false;
+<<<<<<< Updated upstream
         tira::glVolume<unsigned char> vol5;
 
         //Opens ImGui File Dialog
         if (ImGui::Button("Open File Dialog"))
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".npy,.cpp,.h,.txt,.hpp,.pdf,.bmp", ".");
+=======
+        
+
+        //File Dialog
+        if (ImGui::Button("Open File Dialog"))
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".npy,.cpp,.h,.hpp,.pdf,.bmp", ".");
+>>>>>>> Stashed changes
 
         // display
         if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
@@ -128,6 +134,7 @@ void RenderUI() {
                 
                 std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+<<<<<<< Updated upstream
                 std::map<std::string, std::string> selection = ImGuiFileDialog::Instance()->GetSelection();
 
                 for (const auto& pair : selection)
@@ -136,12 +143,25 @@ void RenderUI() {
                 }
                 
                 
+=======
+
+                // action 
+                //std::cout << filePathName << std::endl;
+
+                //std::vector<std::string> selectedFiles = ImGuiFileDialog::Instance()->GetSelection();
+
+
+
+>>>>>>> Stashed changes
 
             }
-
             // close
             ImGuiFileDialog::Instance()->Close();
         }
+        
+        
+
+
 
         // Adjusting the size of the volume along each axis
         ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(230, 0, 0, 255));
