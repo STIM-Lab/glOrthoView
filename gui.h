@@ -8,7 +8,7 @@
 
 
 extern bool reset;
-
+extern bool button_click;
 
 
 void glfw_error_callback(int error, const char* description);

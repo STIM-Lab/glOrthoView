@@ -23,7 +23,7 @@ bool window_focused = false;
 tira::camera cam;                                       // create a perspective camera for 3D visualization of the volume
 bool right_mouse_pressed = false;                       // flag indicates when the right mouse button is being dragged
 bool left_mouse_pressed = false;                        // flag indicates when the left mouse button is being dragged
-
+//bool button_click = false;
 
 
 
@@ -451,6 +451,8 @@ int main(int argc, char** argv)
 
     int cnt;
     bool fileLoaded = false;
+    bool fileLoaded1 = false;
+
     // Main event loop
     while (!glfwWindowShouldClose(window))
     {
@@ -519,7 +521,7 @@ int main(int argc, char** argv)
         glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
         RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, material, cylinder, cylinder_shader);
 
-        
+        /*
         //load numpy file from ImGui File Dialog
         if (ImGuiFileDialog::Instance()->IsOk() && !fileLoaded)
         {
@@ -529,6 +531,40 @@ int main(int argc, char** argv)
 
             fileLoaded = true;
             ImGuiFileDialog::Instance()->Close();
+        }
+        */
+
+        //load stack of images (.bmp) file from ImGui File Dialog
+        if (ImGuiFileDialog::Instance()->IsOk() && button_click)
+        {
+            
+            std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+            std::string extension = filePathName.substr(filePathName.find_last_of(".") + 1);
+
+            if (extension == "npy")
+            {
+                std::cout << "Loading Numpy File" << std::endl;
+                vol1.load_npy("volume.npy");
+                material.SetTexture("volumeTexture", vol1, GL_RGB, GL_NEAREST);
+                fileLoaded = true;
+                button_click = false;
+                ImGuiFileDialog::Instance()->Close();
+            }
+
+            else if (extension == "bmp")
+            {
+                std::cout << "Loading stack of images" << std::endl;
+                vol2.load("data/*.bmp");
+                material.SetTexture("volumeTexture", vol2, GL_RGB, GL_NEAREST);
+                fileLoaded1 = true;
+                button_click = false;
+                ImGuiFileDialog::Instance()->Close();
+            }
+
+            //std::cout << "Loading stack of images" << std::endl;
+            //vol2.load("data/*.bmp");
+            //fileLoaded1 = true;
+            //ImGuiFileDialog::Instance()->Close();
         }
 
 

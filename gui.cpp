@@ -13,6 +13,7 @@ extern float gui_VolumeSize[];
 extern float gui_VolumeSlice[];
 extern float coords[];
 extern bool window_focused;
+bool button_click = false;
 
 
 void glfw_error_callback(int error, const char* description)
@@ -108,8 +109,13 @@ void RenderUI() {
         
 
         //Opens File Dialog
+        
         if (ImGui::Button("Open File Dialog"))
-            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp,.pdf,.bmp,.npy", ".");
+        {
+            
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".npy,.bmp,.cpp,.h,.hpp", ".");
+            button_click = true;
+        }
 
         if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
         {
