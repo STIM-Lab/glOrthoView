@@ -23,6 +23,8 @@ bool window_focused = false;
 tira::camera cam;                                       // create a perspective camera for 3D visualization of the volume
 bool right_mouse_pressed = false;                       // flag indicates when the right mouse button is being dragged
 bool left_mouse_pressed = false;                        // flag indicates when the left mouse button is being dragged
+bool button_click = false;
+
 
 double mouse_x, mouse_y;
 double THETA = 0.02;
@@ -421,8 +423,8 @@ int main(int argc, char** argv)
 
     // Load or create an example volume
     tira::glVolume<unsigned char> vol;
-    vol.load("data/*.bmp");                                                    // uncomment to load from the demo image stack
-    //vol.generate_rgb(256, 256, 256);                                           // generate an RGB grid texture
+    //vol.load("data/*.bmp");                                                    // uncomment to load from the demo image stack
+    vol.generate_rgb(256, 256, 256);                                           // generate an RGB grid texture
 
 
     // generate the basic geometry and materials for rendering
@@ -447,6 +449,8 @@ int main(int argc, char** argv)
     cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);                                                     // center and up
 
     int cnt;
+    bool fileLoaded = false;
+    bool fileLoaded1 = false;
     // Main event loop
     while (!glfwWindowShouldClose(window))
     {
@@ -477,26 +481,7 @@ int main(int argc, char** argv)
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
 
-        if (num_file)
-        {
-            std::cout << "Loading npy" << std::endl;
-            vol1.load_npy("volume.npy");
-            //tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();
-            //material.Unbind();
-            material.SetTexture("volumeTexture", vol1, GL_RGB, GL_NEAREST);
-            //num_file = true;
-        }
-
-        if (rgb_file)
-        {
-            std::cout << "Loading rgb" << std::endl;
-            vol2.generate_rgb(156, 206, 176, 8);
-            //tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();
-            //material.Unbind();
-            material.SetTexture("volumeTexture", vol2, GL_RGB, GL_NEAREST);
-            //num_file = true;
-        }
-
+        
         /****************************************************/
         /*      Draw Stuff To The Viewport                  */
         /****************************************************/
@@ -534,14 +519,40 @@ int main(int argc, char** argv)
         glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
         RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, material, cylinder, cylinder_shader);
         
-        
-        
+        //Load Numpy File or Stack of Images (.bmp) from ImGui File Dialog
+        if (ImGuiFileDialog::Instance()->IsOk() && button_click)
+        {
+            std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+            std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+            std::string extension = filePathName.substr(filePathName.find_last_of(".") + 1);
 
+            if (extension == "npy")
+            {
+                std::cout << "Loading Numpy File" << std::endl;
+                vol1.load_npy("volume.npy");
+                material.SetTexture("volumeTexture", vol1, GL_RGB, GL_NEAREST);
+                fileLoaded = true;
+                button_click = false;
+                ImGuiFileDialog::Instance()->Close();
+            }
+
+            else if (extension == "bmp")
+            {
+                std::cout << "Loading stack of images" << std::endl;
+                vol2.load("data/*.bmp");
+                material.SetTexture("volumeTexture", vol2, GL_RGB, GL_NEAREST);
+                fileLoaded1 = true;
+                button_click = false;
+                ImGuiFileDialog::Instance()->Close();
+            }
+        }
 
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());     // draw the GUI data from its buffer
         glfwSwapBuffers(window);                                    // swap the double buffer
     }
+
+    ImGuiFileDialog::Instance()->Close();
 
 
     DestroyUI();                                                    // Clear the ImGui user interface

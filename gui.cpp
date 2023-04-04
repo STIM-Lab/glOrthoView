@@ -106,22 +106,21 @@ void RenderUI() {
         ///HELIA - updates here
         window_focused = (ImGui::IsWindowHovered() || ImGui::IsWindowFocused()) ? true : false;
         
-        if (ImGui::Button("Open File Dialog"))
-            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp,.pdf,.bmp,.npy", ".");
 
-        // display
+        //opnes ImGui File Dialog
+        if (ImGui::Button("Open File Dialog"))
+        {
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".npy,.cpp,.h,.hpp,.pdf,.bmp", ".");
+            button_click = true;
+        }
+
         if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
         {
-            // action if OK
             if (ImGuiFileDialog::Instance()->IsOk())
             {
                 std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-                // action
-
             }
-
-            // close
             ImGuiFileDialog::Instance()->Close();
         }
 
@@ -140,9 +139,6 @@ void RenderUI() {
         ImGui::Spacing();
         reset = ImGui::Button("Reset", ImVec2(70, 35));
         ImGui::Spacing();
-        //press_button = ImGui::Button("Click Here", ImVec2(110, 35));
-        rgb_file = ImGui::Button("Load volume RGB", ImVec2(200, 35));
-        num_file = ImGui::Button("Load numpy", ImVec2(150, 35));
 
 
         if (ImGui::BeginTable("Coordinates", 2, ImGuiTableFlags_Resizable + ImGuiTableFlags_Borders, ImVec2(0.0f, 5.0f), 2.0f))
