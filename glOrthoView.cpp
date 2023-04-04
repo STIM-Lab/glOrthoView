@@ -521,24 +521,12 @@ int main(int argc, char** argv)
         glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
         RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, material, cylinder, cylinder_shader);
 
-        /*
-        //load numpy file from ImGui File Dialog
-        if (ImGuiFileDialog::Instance()->IsOk() && !fileLoaded)
-        {
-            std::cout << "Loading npy" << std::endl;
-            vol1.load_npy("volume.npy");
-            material.SetTexture("volumeTexture", vol1, GL_RGB, GL_NEAREST);
-
-            fileLoaded = true;
-            ImGuiFileDialog::Instance()->Close();
-        }
-        */
-
-        //load stack of images (.bmp) file from ImGui File Dialog
+        
+        //Load Numpy File or Stack of Images (.bmp) from ImGui File Dialog
         if (ImGuiFileDialog::Instance()->IsOk() && button_click)
-        {
-            
+        {            
             std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+            std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();   
             std::string extension = filePathName.substr(filePathName.find_last_of(".") + 1);
 
             if (extension == "npy")
@@ -560,11 +548,6 @@ int main(int argc, char** argv)
                 button_click = false;
                 ImGuiFileDialog::Instance()->Close();
             }
-
-            //std::cout << "Loading stack of images" << std::endl;
-            //vol2.load("data/*.bmp");
-            //fileLoaded1 = true;
-            //ImGuiFileDialog::Instance()->Close();
         }
 
 

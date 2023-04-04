@@ -108,11 +108,9 @@ void RenderUI() {
         window_focused = (ImGui::IsWindowHovered() || ImGui::IsWindowFocused()) ? true : false;
         
 
-        //Opens File Dialog
-        
+        //Opens File Dialog        
         if (ImGui::Button("Open File Dialog"))
         {
-            
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".npy,.bmp,.cpp,.h,.hpp", ".");
             button_click = true;
         }
