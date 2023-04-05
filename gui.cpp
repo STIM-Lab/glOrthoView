@@ -7,8 +7,6 @@ float ui_scale = 1.5f;                                  // scale value for the U
 //float a_slider_value;                                   // UI variable used to store the value of a floating point slider widget
 
 bool reset = false;
-bool num_file = false;
-bool rgb_file = false;
 extern float gui_VolumeSize[];
 extern float gui_VolumeSlice[];
 extern float coords[];

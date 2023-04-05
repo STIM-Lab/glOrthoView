@@ -414,7 +414,7 @@ int main(int argc, char** argv)
 
     InitUI(window, glsl_version);                       // initialize ImGui
 
-    
+
     GLenum err = glewInit();
     if (GLEW_OK != err) {
         /* Problem: glewInit failed, something is seriously wrong. */
@@ -463,7 +463,7 @@ int main(int argc, char** argv)
 
         //glViewport(0, 0, display_w, display_h);                           // specifies the area of the window where OpenGL can render
         glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
-       
+
 
         // Reset
         if (reset) resetPlane(vs_max);
@@ -471,17 +471,17 @@ int main(int argc, char** argv)
         glm::vec3 volume_size = glm::vec3(gui_VolumeSize[0], gui_VolumeSize[1], gui_VolumeSize[2]);
         glm::vec3 plane_position = glm::vec3(gui_VolumeSlice[0], gui_VolumeSlice[1], gui_VolumeSlice[2]);
         glm::vec3 coordinates = glm::vec3(coords[0], coords[1], coords[2]);
-        
+
 
         // Projection Matrix
         float aspect = (float)display_w / (float)display_h;
         glm::mat4 Mproj = createProjectionMatrix(aspect, volume_size);
-        
+
 
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
 
-        
+
         /****************************************************/
         /*      Draw Stuff To The Viewport                  */
         /****************************************************/
@@ -489,7 +489,7 @@ int main(int argc, char** argv)
         glm::mat4 ViewMatrix(1.0f);
 
         // coordination selection is not applied when user clicks on the imgui window
-        if (!window_focused)                                      
+        if (!window_focused)
             coordinates_select(window, coordinates, display_w, display_h, volume_size, plane_position);
 
 
@@ -498,7 +498,7 @@ int main(int argc, char** argv)
 
 
         // Bind the volume material and render all of the viewports
-        
+
         // render - Upper Right (X-Y) Viewport
         glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
         ViewMatrix = createViewMatrix(0, 1);
@@ -518,7 +518,7 @@ int main(int argc, char** argv)
         glViewport(0, display_h / 2, display_w / 2, display_h / 2);
         glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
         RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, material, cylinder, cylinder_shader);
-        
+
         //Load Numpy File or Stack of Images (.bmp) from ImGui File Dialog
         if (ImGuiFileDialog::Instance()->IsOk() && button_click)
         {
@@ -529,7 +529,7 @@ int main(int argc, char** argv)
             if (extension == "npy")
             {
                 std::cout << "Loading Numpy File" << std::endl;
-                vol1.load_npy("volume.npy");
+                vol1.load_npy(filePathName);
                 material.SetTexture("volumeTexture", vol1, GL_RGB, GL_NEAREST);
                 fileLoaded = true;
                 button_click = false;
