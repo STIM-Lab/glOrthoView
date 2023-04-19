@@ -25,7 +25,68 @@ bool right_mouse_pressed = false;                       // flag indicates when t
 bool left_mouse_pressed = false;                        // flag indicates when the left mouse button is being dragged
 //bool button_click = false;
 
+std::string SlicerVertexSource =                                  // Source code for the default vertex shader
+"# version 330 core\n"
+"layout(location = 0) in vec4 aPos;\n"
+"layout(location = 2) in vec3 texcoords;\n"
+"uniform mat4 MVP;\n"
+"uniform float slider;\n"
+"uniform mat4 view;\n"
+"uniform int axis;\n"
+"out vec3 vertex_tex;\n"
+"void main()\n"
+"{\n"
+"    gl_Position = MVP * aPos;\n"
+"    if (axis == 2) {\n"
+"        vertex_tex = vec3(texcoords.x, texcoords.y, slider);\n"
+"    }\n"
+"    else if (axis == 1)\n"
+"    {\n"
+"        vertex_tex = vec3(texcoords.x, slider, texcoords.y);\n"
+"    }\n"
+"    else\n"
+"    {\n"
+"        vertex_tex = vec3(slider, texcoords.x, texcoords.y);\n"
+"    }\n"
+"};\n";
 
+
+std::string SlicerFragmentSource =                               // Source code for the default fragment shader
+"# version 330 core\n"
+"in vec3 vertex_tex;\n"
+"out vec4 colors;\n"
+"uniform sampler3D volumeTexture;\n"
+"void main()\n"
+"{\n"
+"    float lineWidthHalf = 0.002f;\n"
+"    colors = texture(volumeTexture, vertex_tex);\n"
+"};\n";
+
+std::string AxesVertexSource =
+"#version 330 core\n"
+"layout(location = 0) in vec3 aPos;\n"
+"uniform mat4 MVP;\n"
+"uniform int axis;\n"
+"out vec4 FragColor;\n"
+"void main()\n"
+"{\n"
+"    gl_Position = MVP * vec4(aPos, 1.0);\n"
+"    if (axis == 0)\n"
+"        FragColor = vec4(1.2 * aPos.z, 0.0, 0.0, 1.0);\n"
+"    if (axis == 1)\n"
+"        FragColor = vec4(0.0, 1.2 * aPos.z, 0.0, 1.0);\n"
+"    if (axis == 2)\n"
+"        FragColor = vec4(0.0, 0.0, 1.2 * aPos.z, 1.0);\n"
+"};\n";
+
+std::string AxesFragmentSource =
+"# version 330 core\n"
+"in vec4 FragColor;\n"
+"out vec4 color;\n"
+"void main()\n"
+"{\n"
+"    color = FragColor;\n"
+"};\n";
 
 double mouse_x, mouse_y;
 double THETA = 0.02;
@@ -424,13 +485,19 @@ int main(int argc, char** argv)
 
     // Load or create an example volume
     tira::glVolume<unsigned char> vol;
-    //vol.load("data/*.bmp");                                                    // uncomment to load from the demo image stack
-    vol.generate_rgb(256, 256, 256);                                           // generate an RGB grid texture
+    if (argc >= 1) {                                                            // if any command line arguments are provided
+        std::string in_filename = argv[1];                                      // get the NPY file name
+        vol.load_npy(in_filename);
+    }
+    else {
+        vol.generate_rgb(256, 256, 256);                                           // generate an RGB grid texture
+    }
 
 
     // generate the basic geometry and materials for rendering
     tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();           // create a rectangle for rendering volume cross-sections
-    tira::glMaterial material("slicer.shader");                                     // slicer shader renders a cross-section of the geometry
+    //tira::glMaterial material("slicer.shader");                                     // slicer shader renders a cross-section of the geometry
+    tira::glMaterial material(SlicerVertexSource, SlicerFragmentSource);
     material.SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);                  // bind the volume to the material
 
     tira::glVolume<unsigned char> vol1;
@@ -440,7 +507,8 @@ int main(int argc, char** argv)
     // ////////////////////////////////////////////////////////// //
    // Create a new Cylinder object
     tira::glGeometry cylinder = tira::glGeometry::GenerateCylinder<float>(10, 20);
-    tira::glShader cylinder_shader("axes.shader");
+    //tira::glShader cylinder_shader("axes.shader");
+    tira::glShader cylinder_shader(AxesVertexSource, AxesFragmentSource);
 
 
 

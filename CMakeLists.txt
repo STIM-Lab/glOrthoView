@@ -37,8 +37,6 @@ include_directories(
 configure_file(Roboto-Medium.ttf 
 				Roboto-Medium.ttf COPYONLY)
 file(COPY data DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-configure_file(slicer.shader 
-				slicer.shader COPYONLY)
 configure_file(axes.shader 
 				axes.shader COPYONLY)
 
