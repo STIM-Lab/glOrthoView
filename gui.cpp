@@ -15,6 +15,8 @@ extern float coords[];
 extern bool window_focused;
 bool button_click = false;
 
+void LoadVolume(std::string filepath);
+
 
 void glfw_error_callback(int error, const char* description)
 {
@@ -112,7 +114,6 @@ void RenderUI() {
         if (ImGui::Button("Open File Dialog"))
         {
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".npy,.bmp,.cpp,.h,.hpp", ".");
-            button_click = true;
         }
 
         if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
@@ -120,7 +121,8 @@ void RenderUI() {
             if (ImGuiFileDialog::Instance()->IsOk())
             {
                 std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-                std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();                
+                std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+                LoadVolume(filePathName);
             }
             ImGuiFileDialog::Instance()->Close();
         }

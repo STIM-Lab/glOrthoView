@@ -23,6 +23,9 @@ bool window_focused = false;
 tira::camera cam;                                       // create a perspective camera for 3D visualization of the volume
 bool right_mouse_pressed = false;                       // flag indicates when the right mouse button is being dragged
 bool left_mouse_pressed = false;                        // flag indicates when the left mouse button is being dragged
+
+tira::volume<unsigned char> vol;
+tira::glMaterial* material;
 //bool button_click = false;
 
 std::string SlicerVertexSource =                                  // Source code for the default vertex shader
@@ -465,6 +468,18 @@ void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::
     draw_axes(cylinder, shader, P, V, volume_size, plane_positions);
 }
 
+void LoadVolume(std::string filepath) {
+    std::string extension = filepath.substr(filepath.find_last_of(".") + 1);
+    if (extension == "npy") {
+        std::cout << "Loading Numpy File" << std::endl;
+        vol.load_npy(filepath);
+        material->SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);
+        //fileLoaded = true;
+        //button_click = false;
+
+    }
+}
+
 
 int main(int argc, char** argv)
 {
@@ -484,8 +499,8 @@ int main(int argc, char** argv)
     }
 
     // Load or create an example volume
-    tira::glVolume<unsigned char> vol;
-    if (argc >= 1) {                                                            // if any command line arguments are provided
+    //vol = new tira::volume<unsigned char>();                                  // actually create a glVolume (after an OpenGL context is created)
+    if (argc > 1) {                                                            // if any command line arguments are provided
         std::string in_filename = argv[1];                                      // get the NPY file name
         vol.load_npy(in_filename);
     }
@@ -497,11 +512,8 @@ int main(int argc, char** argv)
     // generate the basic geometry and materials for rendering
     tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();           // create a rectangle for rendering volume cross-sections
     //tira::glMaterial material("slicer.shader");                                     // slicer shader renders a cross-section of the geometry
-    tira::glMaterial material(SlicerVertexSource, SlicerFragmentSource);
-    material.SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);                  // bind the volume to the material
-
-    tira::glVolume<unsigned char> vol1;
-    tira::glVolume<unsigned char> vol2;
+    material = new tira::glMaterial(SlicerVertexSource, SlicerFragmentSource);
+    material->SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);                  // bind the volume to the material
 
     /////////////////////////////////////////////////////////////////
     // ////////////////////////////////////////////////////////// //
@@ -572,51 +584,22 @@ int main(int argc, char** argv)
         // render - Upper Right (X-Y) Viewport
         glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
         ViewMatrix = createViewMatrix(0, 1);
-        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, material, cylinder, cylinder_shader);
+        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, *material, cylinder, cylinder_shader);
 
         // render - Lower Right (X-Z) Viewport
         glViewport(display_w / 2, 0, display_w / 2, display_h / 2);
         ViewMatrix = createViewMatrix(0, 2);
-        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, material, cylinder, cylinder_shader);
+        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, *material, cylinder, cylinder_shader);
 
         // render - Lower Left (Y-Z) Viewport
         glViewport(0, 0, display_w / 2, display_h / 2);
         ViewMatrix = createViewMatrix(1, 2);
-        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, material, cylinder, cylinder_shader);
+        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, *material, cylinder, cylinder_shader);
 
         // Render the upper left (3D) view
         glViewport(0, display_h / 2, display_w / 2, display_h / 2);
         glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
-        RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, material, cylinder, cylinder_shader);
-
-        
-        //Load Numpy File or Stack of Images (.bmp) from ImGui File Dialog
-        if (ImGuiFileDialog::Instance()->IsOk() && button_click)
-        {            
-            std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-            std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();   
-            std::string extension = filePathName.substr(filePathName.find_last_of(".") + 1);
-
-            if (extension == "npy")
-            {
-                std::cout << "Loading Numpy File" << std::endl;
-                vol1.load_npy("volume.npy");
-                material.SetTexture("volumeTexture", vol1, GL_RGB, GL_NEAREST);
-                fileLoaded = true;
-                button_click = false;
-                ImGuiFileDialog::Instance()->Close();
-            }
-
-            else if (extension == "bmp")
-            {
-                std::cout << "Loading stack of images" << std::endl;
-                vol2.load("data/*.bmp");
-                material.SetTexture("volumeTexture", vol2, GL_RGB, GL_NEAREST);
-                fileLoaded1 = true;
-                button_click = false;
-                ImGuiFileDialog::Instance()->Close();
-            }
-        }
+        RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, *material, cylinder, cylinder_shader);
 
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());     // draw the GUI data from its buffer
