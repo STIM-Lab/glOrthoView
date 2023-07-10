@@ -24,8 +24,12 @@ tira::camera cam;                                       // create a perspective 
 bool right_mouse_pressed = false;                       // flag indicates when the right mouse button is being dragged
 bool left_mouse_pressed = false;                        // flag indicates when the left mouse button is being dragged
 
-tira::volume<unsigned char> vol;
-tira::glMaterial* material;
+tira::glVolume<unsigned char>* vol;                     // grid storing volumetric information
+tira::glShader* vol_shader;                             // shader for rendering volumetric information
+tira::glGeometry* axis;                                 // geometry for the axes (represented as cylinders)
+tira::glShader* axis_shader;                            // shader used to render axes (x=red, y=green, z=blue)
+
+
 //bool button_click = false;
 
 std::string SlicerVertexSource =                                  // Source code for the default vertex shader
@@ -371,12 +375,12 @@ void resetPlane(float vs_max) {
     cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 }
 
-void inline draw_axes(tira::glGeometry cylinder, tira::glShader shader, glm::mat4 projection, glm::mat4 view, glm::vec3 volume_size, glm::vec3 plane_positions) {
+void inline draw_axes(glm::mat4 projection, glm::mat4 view, glm::vec3 volume_size, glm::vec3 plane_positions) {
     glm::mat4 rotation(1.0f);
     glm::mat4 translation(1.0f);
     glm::mat4 scale(1.0f);
     glm::mat4 M(1.0f);
-    shader.Bind();
+    axis_shader->Bind();
 
     // X axis
     rotation = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0, 1.0, 0.0));
@@ -384,9 +388,9 @@ void inline draw_axes(tira::glGeometry cylinder, tira::glShader shader, glm::mat
     translation = createTransMatrix(0, 1, volume_size, plane_positions) * createTransMatrix(0, 2, volume_size, plane_positions);
     translation *= glm::translate(glm::mat4(1.0f), glm::vec3(-volume_size.x / 2.0f, 0.0f, 0.0f));
     M = translation * scale * rotation;
-    shader.SetUniformMat4f("MVP", projection * view * M);
-    shader.SetUniform1i("axis", 0);
-    cylinder.Draw();
+    axis_shader->SetUniformMat4f("MVP", projection * view * M);
+    axis_shader->SetUniform1i("axis", 0);
+    axis->Draw();
 
     // Y axis
     rotation = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0, 0.0, 0.0));
@@ -394,9 +398,9 @@ void inline draw_axes(tira::glGeometry cylinder, tira::glShader shader, glm::mat
     translation = createTransMatrix(1, 2, volume_size, plane_positions) * createTransMatrix(0, 1, volume_size, plane_positions);
     translation *= glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -volume_size.y / 2, 0.0f));
     M = translation * scale * rotation;
-    shader.SetUniformMat4f("MVP", projection * view * M);
-    shader.SetUniform1i("axis", 1);
-    cylinder.Draw();
+    axis_shader->SetUniformMat4f("MVP", projection * view * M);
+    axis_shader->SetUniform1i("axis", 1);
+    axis->Draw();
 
     // Z axis
     rotation = glm::mat4(1.0f);
@@ -404,9 +408,9 @@ void inline draw_axes(tira::glGeometry cylinder, tira::glShader shader, glm::mat
     translation = createTransMatrix(1, 2, volume_size, plane_positions) * createTransMatrix(0, 2, volume_size, plane_positions);
     translation *= glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -volume_size.z / 2.0f));
     M = translation * scale * rotation;
-    shader.SetUniformMat4f("MVP", projection * view * M);
-    shader.SetUniform1i("axis", 2);
-    cylinder.Draw();
+    axis_shader->SetUniformMat4f("MVP", projection * view * M);
+    axis_shader->SetUniform1i("axis", 2);
+    axis->Draw();
 }
 
 
@@ -420,14 +424,14 @@ void inline draw_axes(tira::glGeometry cylinder, tira::glShader shader, glm::mat
 /// <param name="rect"></param>
 /// <param name="material"></param>
 void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::mat4 V, glm::mat4 P,
-    tira::glGeometry rect, tira::glMaterial material, tira::glGeometry cylinder, tira::glShader shader) {
+    tira::glGeometry rect, tira::glShader shader) {
 
     glm::mat4 M1, M2, M3;                                   // create a model matrix
     glm::mat4 rotation;                                     // create a rotation matrix
     glm::mat4 scale;                                        // create a scale matrix
     glm::mat4 translation;                                  // create a translation matrix
 
-    material.Begin();
+    vol_shader->Bind();
     {
         // create a model matrix that scales and orients the XY plane
         rotation = createRotationMatrix(0, 1);
@@ -435,9 +439,9 @@ void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::
         translation = createTransMatrix(0, 1, volume_size, plane_positions);
         M1 = translation * scale * rotation;
         // render - Upper Right (X-Y) Viewport
-        material.SetUniformMat4f("MVP", P * V * M1);
-        material.SetUniform1i("axis", 2);
-        material.SetUniform1f("slider", plane_positions.z);
+        vol_shader->SetUniformMat4f("MVP", P * V * M1);
+        vol_shader->SetUniform1i("axis", 2);
+        vol_shader->SetUniform1f("slider", plane_positions.z);
         rect.Draw();
         
         
@@ -447,9 +451,9 @@ void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::
         translation = createTransMatrix(0, 2, volume_size, plane_positions);
         M2 = translation * scale * rotation;
         // render - Lower Right (X-Z) Viewport
-        material.SetUniformMat4f("MVP", P * V * M2);
-        material.SetUniform1i("axis", 1);
-        material.SetUniform1f("slider", plane_positions.y);
+        vol_shader->SetUniformMat4f("MVP", P * V * M2);
+        vol_shader->SetUniform1i("axis", 1);
+        vol_shader->SetUniform1f("slider", plane_positions.y);
         rect.Draw();
 
         // create a model matrix that scales and orients the YZ plane
@@ -458,25 +462,28 @@ void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::
         translation = createTransMatrix(1, 2, volume_size, plane_positions);
         M3 = translation * scale * rotation;
         // render - Lower Left (Y-Z) Viewport
-        material.SetUniformMat4f("MVP", P * V * M3);
-        material.SetUniform1i("axis", 0);
-        material.SetUniform1f("slider", plane_positions.x);
+        vol_shader->SetUniformMat4f("MVP", P * V * M3);
+        vol_shader->SetUniform1i("axis", 0);
+        vol_shader->SetUniform1f("slider", plane_positions.x);
         rect.Draw();
         
     }
-    material.End();
-    draw_axes(cylinder, shader, P, V, volume_size, plane_positions);
+    vol_shader->Unbind();
+    draw_axes(P, V, volume_size, plane_positions);
 }
 
+/// <summary>
+/// Load a volume from a NumPy file
+/// </summary>
+/// <param name="filepath">NumPy file name</param>
 void LoadVolume(std::string filepath) {
-    std::string extension = filepath.substr(filepath.find_last_of(".") + 1);
-    if (extension == "npy") {
-        std::cout << "Loading Numpy File" << std::endl;
-        vol.load_npy(filepath);
-        material->SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);
-        //fileLoaded = true;
-        //button_click = false;
-
+    std::string extension = filepath.substr(filepath.find_last_of(".") + 1);    // get the file extension
+    if (extension == "npy") {                                                   // make sure that the file extension indicates a NumPy file
+        vol->load_npy(filepath);                                                // load the file
+    }
+    else {
+        std::cout << "ERROR: file type not supported (requires *.npy)" << std::endl;    // if the file is not a NumPy file, show an error and exit
+        exit(1);
     }
 }
 
@@ -484,43 +491,40 @@ void LoadVolume(std::string filepath) {
 int main(int argc, char** argv)
 {
     // Initialize OpenGL
-    window = InitGLFW();                                // create a GLFW window
+    window = InitGLFW();                                                            // create a GLFW window
 
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
-    glfwSetCursorPosCallback(window, cursor_position_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);                      // set mouse callback function
+    glfwSetCursorPosCallback(window, cursor_position_callback);                     // set mouse movement callback function
 
-    InitUI(window, glsl_version);                       // initialize ImGui
+    InitUI(window, glsl_version);                                                   // initialize ImGui
 
 
-    GLenum err = glewInit();
+    GLenum err = glewInit();                                                        // initialize GLEW
     if (GLEW_OK != err) {
         /* Problem: glewInit failed, something is seriously wrong. */
         fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
     }
 
     // Load or create an example volume
-    //vol = new tira::volume<unsigned char>();                                  // actually create a glVolume (after an OpenGL context is created)
-    if (argc > 1) {                                                            // if any command line arguments are provided
-        std::string in_filename = argv[1];                                      // get the NPY file name
-        vol.load_npy(in_filename);
+    vol = new tira::glVolume<unsigned char>();
+    if (argc > 1) {                                                                 // if any command line arguments are provided
+        std::string in_filename = argv[1];                                          // get the NPY file name
+        vol->load_npy(in_filename);
     }
     else {
-        vol.generate_rgb(256, 256, 256);                                           // generate an RGB grid texture
+        vol->generate_rgb(256, 256, 256);                                           // generate an RGB grid texture
     }
 
 
     // generate the basic geometry and materials for rendering
     tira::glGeometry rect = tira::glGeometry::GenerateRectangle<float>();           // create a rectangle for rendering volume cross-sections
-    //tira::glMaterial material("slicer.shader");                                     // slicer shader renders a cross-section of the geometry
-    material = new tira::glMaterial(SlicerVertexSource, SlicerFragmentSource);
-    material->SetTexture("volumeTexture", vol, GL_RGB, GL_NEAREST);                  // bind the volume to the material
+    vol_shader = new tira::glShader(SlicerVertexSource, SlicerFragmentSource);
+    vol->Bind();                                                                    // bind the volume texture so that the shader can use it
 
-    /////////////////////////////////////////////////////////////////
-    // ////////////////////////////////////////////////////////// //
    // Create a new Cylinder object
-    tira::glGeometry cylinder = tira::glGeometry::GenerateCylinder<float>(10, 20);
-    //tira::glShader cylinder_shader("axes.shader");
-    tira::glShader cylinder_shader(AxesVertexSource, AxesFragmentSource);
+    axis = new tira::glGeometry();
+    *axis = tira::glGeometry::GenerateCylinder<float>(10, 20);
+    axis_shader = new tira::glShader(AxesVertexSource, AxesFragmentSource);
 
 
 
@@ -543,12 +547,11 @@ int main(int argc, char** argv)
         int display_w, display_h;                                           // size of the frame buffer (openGL display)
         glfwGetFramebufferSize(window, &display_w, &display_h);             // get the frame buffer size
 
-        //glViewport(0, 0, display_w, display_h);                           // specifies the area of the window where OpenGL can render
         glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
 
 
-        // Reset
-        if (reset) resetPlane(vs_max);
+
+        if (reset) resetPlane(vs_max);                                      // reset the axes
 
         glm::vec3 volume_size = glm::vec3(gui_VolumeSize[0], gui_VolumeSize[1], gui_VolumeSize[2]);
         glm::vec3 plane_position = glm::vec3(gui_VolumeSlice[0], gui_VolumeSlice[1], gui_VolumeSlice[2]);
@@ -561,7 +564,7 @@ int main(int argc, char** argv)
 
 
         glEnable(GL_DEPTH_TEST);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                               // clear the Viewport using the clear color
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                 // clear the Viewport using the clear color
 
 
         /****************************************************/
@@ -584,22 +587,22 @@ int main(int argc, char** argv)
         // render - Upper Right (X-Y) Viewport
         glViewport(display_w / 2, display_h / 2, display_w / 2, display_h / 2);
         ViewMatrix = createViewMatrix(0, 1);
-        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, *material, cylinder, cylinder_shader);
+        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, *vol_shader);
 
         // render - Lower Right (X-Z) Viewport
         glViewport(display_w / 2, 0, display_w / 2, display_h / 2);
         ViewMatrix = createViewMatrix(0, 2);
-        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, *material, cylinder, cylinder_shader);
+        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, *vol_shader);
 
         // render - Lower Left (Y-Z) Viewport
         glViewport(0, 0, display_w / 2, display_h / 2);
         ViewMatrix = createViewMatrix(1, 2);
-        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, *material, cylinder, cylinder_shader);
+        RenderSlices(volume_size, plane_position, ViewMatrix, Mproj, rect, *vol_shader);
 
         // Render the upper left (3D) view
         glViewport(0, display_h / 2, display_w / 2, display_h / 2);
         glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
-        RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, *material, cylinder, cylinder_shader);
+        RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, *vol_shader);
 
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());     // draw the GUI data from its buffer
