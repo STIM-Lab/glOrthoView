@@ -432,6 +432,7 @@ void inline RenderSlices(glm::vec3 volume_size, glm::vec3 plane_positions, glm::
     glm::mat4 translation;                                  // create a translation matrix
 
     vol_shader->Bind();
+    vol->Bind();
     {
         // create a model matrix that scales and orients the XY plane
         rotation = createRotationMatrix(0, 1);
