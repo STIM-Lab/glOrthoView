@@ -123,7 +123,7 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
         mouse_x = xpos;
         mouse_y = ypos;
 
-        cam.OrbitFocus(-THETA * dx, THETA * dy);
+        cam.orbit(-THETA * dx, THETA * dy);
     }
 }
 
@@ -371,8 +371,8 @@ void resetPlane(float vs_max) {
         gui_VolumeSlice[i] = 0.5f;
         coords[i] = 0.0f;
     }
-    cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);
-    cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    cam.position(2 * vs_max, 2 * vs_max, 2 * vs_max);
+    cam.lookat(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 }
 
 void inline draw_axes(glm::mat4 projection, glm::mat4 view, glm::vec3 volume_size, glm::vec3 plane_positions) {
@@ -531,8 +531,8 @@ int main(int argc, char** argv)
 
     // initialize the camera for 3D view
     float vs_max = std::max(gui_VolumeSize[0], std::max(gui_VolumeSize[1], gui_VolumeSize[2]));         // find the maximum size of the volume
-    cam.setPosition(2 * vs_max, 2 * vs_max, 2 * vs_max);                                                // eye
-    cam.LookAt(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);                                                     // center and up
+    cam.position(2 * vs_max, 2 * vs_max, 2 * vs_max);                                                // eye
+    cam.lookat(0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);                                                     // center and up
 
     int cnt;
     bool fileLoaded = false;
@@ -602,7 +602,7 @@ int main(int argc, char** argv)
 
         // Render the upper left (3D) view
         glViewport(0, display_h / 2, display_w / 2, display_h / 2);
-        glm::mat4 Mview3D = glm::lookAt(cam.getPosition(), cam.getLookAt(), cam.getUp());
+        glm::mat4 Mview3D = cam.viewmatrix(); // glm::lookat(cam.getPosition(), cam.getLookAt(), cam.getUp());
         RenderSlices(volume_size, plane_position, Mview3D, Mproj, rect, *vol_shader);
 
 
